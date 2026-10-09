@@ -44,7 +44,7 @@ export default function App() {
     <>
       {view === 'landing' && (
         <div className="view-wrap">
-          <LandingPage onEnter={enterApp} theme={theme} setTheme={setTheme} />
+          <LandingPage onEnter={enterApp} theme={theme} setTheme={setTheme} apiOnline={apiOnline} />
         </div>
       )}
 

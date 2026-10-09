@@ -114,8 +114,8 @@
 
 /* ─── CARDS ───────────────────────────────────────────────── */
 .landing-cards {
-  display: grid; grid-template-columns: repeat(3, 1fr);
-  gap: 16px; width: 100%; max-width: 900px;
+  display: grid; grid-template-columns: repeat(2, 1fr);
+  gap: 16px; width: 100%; max-width: 720px;
   animation: landingFadeUp 0.8s ease-out 0.15s both;
 }
 

@@ -1,3 +1,13 @@
+> **CORRECTION NOTE (added during final audit, 2026-10-10).** Read the claims below with these caveats:
+> 1. This evaluates the PyTorch "Model C" (ArcFace + visual branch). The live demo no longer uses it: `live_pipeline_v4.py` hardcodes its output
+>    as "100% genuine" and the unified API uses a separate swap detector (see top-level README).
+> 2. Overall accuracy under attack is 6% (eps 0.01), 21% (0.05) and 29% (0.1) for C-Adv, i.e. the model is *not* robust. The summary highlights
+>    only impersonation F1, which can stay high for a classifier that over-predicts "impersonation" under noise (see "Summary" below).
+> 3. The "massive research success" / "dramatically improves" wording is not supported by these numbers. A 99% clean impersonation F1 also suggests the
+>    swap class is separable by data artifacts in that dataset.
+> 4. Only FGSM was used. Later experiments in this repo (`eval_results/margin_attack_results.json`) show FGSM/BCE-PGD robustness numbers can be
+>    gradient-masking artifacts; a logit-margin PGD with restarts is the authoritative check.
+
 # Adversarial Robustness Summary: C-Control vs C-Adv
 
 ## Attack Method

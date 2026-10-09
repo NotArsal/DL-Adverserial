@@ -47,7 +47,7 @@ res = {"model": os.path.basename(MODEL), "n_real": int((y == 0).sum()), "n_fake"
        "f1": float(f1), "auc": float(roc_auc_score(y, s)), "confusion_matrix[[TN,FP],[FN,TP]]": cm.tolist(),
        "per_method_detection_rate": {m: float((pred[meth == m] == 1).mean()) for m in METHODS},
        "real_correctly_accepted": float((pred[meth == "Original"] == 0).mean())}
-json.dump(res, open(os.path.join(OUT, "faceguard_ffpp_metrics.json"), "w"), indent=2)
+json.dump(res, open(os.path.join(OUT, f"faceguard_ffpp_metrics_{os.path.basename(MODEL)[:-3]}.json"), "w"), indent=2)
 print(json.dumps(res, indent=2))
 
 fpr, tpr, _ = roc_curve(y, s)
@@ -57,4 +57,4 @@ ax[0].set(xlabel="False positive rate", ylabel="True positive rate", title="Face
 ax[1].imshow(cm, cmap="Blues"); ax[1].set(xticks=[0, 1], yticks=[0, 1], xticklabels=["Real", "Fake"], yticklabels=["Real", "Fake"],
                                            xlabel="Predicted", ylabel="Actual", title=f"Confusion @ {THRESH}")
 for (a, b), v in np.ndenumerate(cm): ax[1].text(b, a, v, ha="center", va="center", color="red", fontsize=14)
-plt.tight_layout(); plt.savefig(os.path.join(OUT, "faceguard_ffpp_roc_confusion.png"), dpi=130)
+plt.tight_layout(); plt.savefig(os.path.join(OUT, f"faceguard_ffpp_roc_confusion_{os.path.basename(MODEL)[:-3]}.png"), dpi=130)

@@ -1,15 +1,23 @@
 import React, { useState } from 'react';
 import './LandingPage.css';
-import { FaGithub, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import { Image, Film, Camera, Info, X, Shield, Moon, Sun } from 'lucide-react';
+import { Image, Film, Camera, Info, X, Shield, Moon, Sun, ShieldCheck } from 'lucide-react';
 
 const MODES = [
+  {
+    id: 'unified',
+    Icon: ShieldCheck,
+    label: 'Unified Checkpoint',
+    tagline: 'ATTACK VS DEFENSE',
+    desc: 'ArcFace identity check plus a face-swap detector. Toggle a live InSwapper attack and watch the detector veto the match.',
+    color: '#ff2d6b',
+    rgb: '255,45,107',
+  },
   {
     id: 'image',
     Icon: Image,
     label: 'Image Analysis',
     tagline: 'FORENSIC SCAN',
-    desc: 'Upload any image and let the neural engine detect manipulation artifacts with 92.8% accuracy.',
+    desc: 'Score a single image with the FaceGuard classifier (trained on FaceForensics++; see README for measured accuracy).',
     color: '#00d4ff',
     rgb: '0,212,255',
   },
@@ -18,7 +26,7 @@ const MODES = [
     Icon: Film,
     label: 'Video Forensics',
     tagline: 'TEMPORAL ANALYSIS',
-    desc: 'Frame-by-frame deepfake detection streamed live. Watch the AI scan each moment in real time.',
+    desc: 'Upload a video and see the per-frame FaceGuard fake score as a timeline.',
     color: '#a855f7',
     rgb: '168,85,247',
   },
@@ -27,21 +35,16 @@ const MODES = [
     Icon: Camera,
     label: 'Live Surveillance',
     tagline: 'REAL-TIME SCAN',
-    desc: 'Live biometric analysis via WebSocket at 5fps. Instantaneous deepfake detection from your camera.',
+    desc: 'Stream webcam frames to the FaceGuard classifier over WebSocket and watch the score update live.',
     color: '#00e676',
     rgb: '0,230,118',
   },
 ];
 
-const socialLogos = [
-  { node: <FaGithub />,    title: 'GitHub',    href: 'https://github.com/hiba-castellan' },
-  { node: <FaInstagram />, title: 'Instagram', href: 'https://instagram.com/' },
-  { node: <FaLinkedinIn />,title: 'LinkedIn',  href: 'https://linkedin.com/' },
-];
 
 
 
-export default function LandingPage({ onEnter, theme, setTheme }) {
+export default function LandingPage({ onEnter, theme, setTheme, apiOnline }) {
   const [hovered, setHovered] = useState(null);
   
 
@@ -76,15 +79,14 @@ export default function LandingPage({ onEnter, theme, setTheme }) {
         <div className="landing-hero">
           <div className="landing-badge">
             <span className="landing-badge-dot" />
-            NEURAL ENGINE ONLINE
-          </div>
+            {apiOnline === null ? 'CONNECTING...' : apiOnline ? 'BACKEND ONLINE' : 'BACKEND OFFLINE - START uvicorn ON :8001'}          </div>
           <h1 className="landing-title">
-            Detect the<br />
-            <span className="landing-title-accent">Undetectable</span>
+            Attack it.<br />
+            <span className="landing-title-accent">Then defend it.</span>
           </h1>
           <p className="landing-subtitle">
-            Real-time deepfake detection powered by MobileNetV2.<br />
-            Select your analysis mode to begin.
+            Face-swap impersonation vs. identity verification, with a measured, adversarially-tested defense.<br />
+            Select a mode to begin.
           </p>
         </div>
 

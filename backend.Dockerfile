@@ -31,7 +31,7 @@ RUN pip3 install --no-cache-dir insightface==0.7.3
 COPY . .
 
 # Expose the unified API port
-EXPOSE 8000
+EXPOSE 8001
 
 # Run the unified server
-CMD ["uvicorn", "unified_api:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "unified_api:app", "--host", "0.0.0.0", "--port", "8001"]

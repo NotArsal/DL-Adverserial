@@ -1,0 +1,9 @@
+.git
+.venv
+**/node_modules
+**/__pycache__
+eval_data
+data
+eval_results
+*.zip
+FaceGuard-Digital-Forensic-System/frontend/build

@@ -2,14 +2,14 @@
 Attack success = the swapped face is accepted as the source identity by the *whole* system.
  - ArcFace only      : accepted if cos-sim(swap, source) >= ArcFace threshold (calibrated on validation by DL_project)
  - + swap detector   : additionally requires P(swap) < 0.5
- - adaptive attacker : white-box PGD on the fake crop against the detector (ASSUMES the perturbation leaves ArcFace similarity
+ - adaptive attacker : white-box margin-PGD on the fake crop against the detector (ASSUMES the perturbation leaves ArcFace similarity
                        unchanged; ArcFace is not attacked here, so this is the detector's worst case, not a full-system proof).
 Usage: python eval_system.py"""
 import os, csv, json
 import numpy as np, torch
 from torch.utils.data import DataLoader
 from swapdet import Net
-from train_swapdet import DS, pgd, DATA, OUT, MODELS, dev
+from train_swapdet import DS, margin_pgd, DATA, OUT, MODELS, dev
 
 ARC_THR = json.load(open(os.path.join(os.path.dirname(__file__), "DL_project", "experiments", "final_evaluation", "model_a_threshold.json")))["selected_threshold"]
 meta = {r["tag"]: r for r in csv.DictReader(open(os.path.join(DATA, "meta.csv"))) if r["split"] == "test"}
@@ -29,14 +29,16 @@ def probs(model, idx, att=None):
         with torch.no_grad(): out.append(torch.sigmoid(model(x)).cpu())
     return torch.cat(out).numpy()
 
-for name in ("clean", "adversarial"):
+import glob
+NAMES = [os.path.basename(f)[8:-3] for f in sorted(glob.glob(os.path.join(MODELS, "swapdet_*.pt"))) if "deployed" not in f]
+for name in NAMES:
     m = Net().to(dev).eval(); m.load_state_dict(torch.load(os.path.join(MODELS, f"swapdet_{name}.pt"), map_location=dev, weights_only=True))
     p_fake, p_real = probs(m, fake_idx), probs(m, np.where(is_fake == 0)[0])
     r = {"genuine_user_blocked(false_alarm)": float((p_real >= .5).mean()), "swap_detected": float((p_fake >= .5).mean()),
          "attack_success_vs_system": float((arc_accept & (p_fake < .5)).mean())}
-    for e in (2, 4, 8):  # attacker minimises P(swap) with PGD-20 (maximise BCE of label 'fake' -> push away)
-        pa = probs(m, fake_idx, lambda mm, x, y: pgd(mm, x, y, e / 255, 20))
-        r[f"attack_success_vs_system_adaptive_eps{e}/255"] = float((arc_accept & (pa < .5)).mean())
+    for e in (1, 2, 4):  # attacker minimises the swap logit with strong margin-PGD (50 steps x 2 restarts)
+        pa = probs(m, fake_idx, lambda mm, x, y: margin_pgd(mm, x, e / 255))
+        r[f"attack_success_vs_system_margin_pgd_eps{e}/255"] = float((arc_accept & (pa < .5)).mean())
     r["operating_points(threshold: swap_detected / real_false_alarm)"] = {str(t): [float((p_fake >= t).mean()), float((p_real >= t).mean())] for t in (0.5, 0.7, 0.8, 0.9, 0.95)}
-    res[name + "_detector"] = r; print(name, json.dumps(r, indent=1), flush=True)
+    res[name] = r; print(name, json.dumps(r, indent=1), flush=True)
 json.dump(res, open(os.path.join(OUT, "system_results.json"), "w"), indent=2)

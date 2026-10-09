@@ -39,7 +39,9 @@ import src.api.server as dl_server
 sys.path.insert(0, ROOT_DIR)
 from swapdet import SwapDetector, decide
 MAX_FRAME_BYTES = 2 * 1024 * 1024
-SWAP_THRESHOLD = 0.5   # P(swap) at/above this blocks the attempt, even if ArcFace matches an identity
+# P(swap) at/above this blocks the attempt, even if ArcFace matches an identity. 0.8 (not 0.5) leaves margin for webcam domain shift:
+# real webcam frames score 0.3-0.5, a live InSwapper frame ~1.0. Held-out test: ~90% of swaps caught at ~1% false alarms (eval_results/system_results.json).
+SWAP_THRESHOLD = 0.8
 EMA_ALPHA = 0.5        # temporal smoothing of P(swap) across frames
 swap_detector = None
 

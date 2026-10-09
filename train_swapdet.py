@@ -13,6 +13,7 @@ DATA = os.path.join(ROOT, "data", "swapdet"); OUT = os.path.join(ROOT, "eval_res
 EPOCHS = int(sys.argv[1]) if len(sys.argv) > 1 else 8
 EPS255 = float(sys.argv[2]) if len(sys.argv) > 2 else None   # `python train_swapdet.py 10 1` -> only the adversarial run at eps=1/255
 dev = "cuda"; TRAIN_EPS = (EPS255 or 4) / 255; TRAIN_STEPS = 5
+ADV_W = float(sys.argv[3]) if len(sys.argv) > 3 else 0.5   # weight of the adversarial loss term (rest is clean loss)
 torch.manual_seed(0); np.random.seed(0); random.seed(0)
 
 def augment(im):  # webcam-like degradations so the detector isn't keyed on pristine-pixel artifacts
@@ -43,6 +44,19 @@ def pgd(model, x, y, eps, steps, rand=True):
     for m, t in zip(model.modules(), modes): m.training = t   # restore each module's own mode (keeps frozen BN frozen)
     return adv.detach()
 
+def margin_pgd(model, x, eps, steps=50, restarts=2):
+    """Strong untargeted attack on swapped faces: PGD on the raw logit (no sigmoid saturation => no gradient masking), random restarts,
+    worst case per sample. Authoritative robustness metric; BCE-PGD overstates robustness (see eval_results/margin_attack_results.json)."""
+    best = torch.full((len(x),), 1e9, device=x.device); best_adv = x.clone(); a = 2.5 * eps / steps
+    for _ in range(restarts):
+        adv = (x + torch.empty_like(x).uniform_(-eps, eps)).clamp(0, 1)
+        for _ in range(steps):
+            adv.requires_grad_(True); g, = torch.autograd.grad(model(adv).sum(), adv)
+            adv = torch.min(torch.max(adv.detach() - a * g.sign(), x - eps), x + eps).clamp(0, 1)
+        with torch.no_grad(): lg = model(adv)
+        m = lg < best; best[m] = lg[m]; best_adv[m] = adv[m]
+    return best_adv
+
 def freeze_bn(model):  # attacks are crafted in eval mode; keep BN stats fixed so train/attack/eval all see the same function
     for m in model.modules():
         if isinstance(m, nn.BatchNorm2d): m.eval()
@@ -63,7 +77,7 @@ def train(adversarial, init=None):
             x, y = x.to(dev), y.to(dev); loss = F.binary_cross_entropy_with_logits(model(x), y)
             if adversarial:
                 eps = TRAIN_EPS * min(1.0, (step + 1) / ramp)
-                loss = .5 * loss + .5 * F.binary_cross_entropy_with_logits(model(pgd(model, x, y, eps, TRAIN_STEPS)), y)
+                loss = (1 - ADV_W) * loss + ADV_W * F.binary_cross_entropy_with_logits(model(pgd(model, x, y, eps, TRAIN_STEPS)), y)
             opt.zero_grad(); loss.backward(); opt.step(); sched.step(); tot += loss.item(); step += 1
         print(f"  [{'adv' if adversarial else 'clean'}{'-ft' if init else ''}] epoch {ep + 1}/{EPOCHS} loss {tot / len(dl):.4f}", flush=True)
     return model.eval()
@@ -90,9 +104,9 @@ def evaluate(model):
 if __name__ == "__main__":
     base = os.path.join(MODELS, "swapdet_clean.pt"); rp = os.path.join(OUT, "swapdet_results.json")
     if EPS255:  # single adversarial run at a chosen training eps, merged into the results file
-        res = json.load(open(rp)); name = f"adversarial_eps{EPS255:g}"
+        res = json.load(open(rp)); name = f"adversarial_eps{EPS255:g}" + (f"_w{ADV_W:g}" if ADV_W != 0.5 else "")
         m = train(True, init=base); torch.save(m.state_dict(), os.path.join(MODELS, f"swapdet_{name}.pt")); res[name] = evaluate(m)
-        res[name]["train_eps"] = f"{EPS255:g}/255"; json.dump(res, open(rp, "w"), indent=2); print(name, json.dumps(res[name], indent=1), flush=True); sys.exit()
+        res[name]["train_eps"] = f"{EPS255:g}/255"; res[name]["adv_loss_weight"] = ADV_W; json.dump(res, open(rp, "w"), indent=2); print(name, json.dumps(res[name], indent=1), flush=True); sys.exit()
     base = os.path.join(MODELS, "swapdet_clean.pt")
     res = {"epochs": EPOCHS, "protocol": "clean = full training (BN train mode); control & adversarial = EPOCHS of fine-tuning FROM clean with frozen BN, same LR/schedule; "
                                          "adversarial adds PGD-5 loss, eps=4/255 ramped over 3 epochs, 50% clean + 50% adversarial"}

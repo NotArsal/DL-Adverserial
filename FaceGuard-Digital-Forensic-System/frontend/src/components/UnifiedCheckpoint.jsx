@@ -94,7 +94,11 @@ export default function UnifiedCheckpoint() {
     <div style={{ padding: '2rem', color: 'white', fontFamily: 'monospace' }}>
       <h1>Unified Security Checkpoint</h1>
       <p style={{ color: 'var(--text-muted)' }}>
-        ArcFace identity matching + an adversarially-trained face-swap detector that can veto an identity match.
+        ArcFace identity matching + a face-swap detector that can veto an identity match.
+      </p>
+
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+        Threat model: live face-swap presentation attacks. The detector is NOT hardened against pixel-level adversarial perturbations (white-box PGD evades it; see README).
       </p>
 
       <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
