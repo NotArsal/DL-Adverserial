@@ -72,6 +72,7 @@ class LiveInferencePipelineV4:
         swap_latency = time.time() - swap_start
         
         self.last_processed_frame = processed_frame
+        self.last_face_bbox = None
         
         # Step 2: Live Model A Inference & Face Detection
         detect_start = time.time()
@@ -84,7 +85,8 @@ class LiveInferencePipelineV4:
         model_a_start = time.time()
         best_face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
         emb = best_face.normed_embedding
-        
+        self.last_face_bbox = best_face.bbox
+
         id_res = self.identity_pipeline.gallery.identify(
             self.identity_pipeline.engine, emb, threshold=self.identity_pipeline.match_threshold
         )

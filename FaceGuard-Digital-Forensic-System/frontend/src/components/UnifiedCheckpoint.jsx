@@ -5,7 +5,8 @@ export default function UnifiedCheckpoint() {
   const [active, setActive] = useState(false);
   const [status, setStatus] = useState("Disconnected");
   const [verdict, setVerdict] = useState(null);
-  const [fgScore, setFgScore] = useState(0);
+  const [info, setInfo] = useState(null);
+  const [attack, setAttack] = useState(false); // simulate a live InSwapper impersonation attack
   
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -20,7 +21,7 @@ export default function UnifiedCheckpoint() {
         videoRef.current.play();
       }
       streamRef.current = stream;
-      connectWS();
+      connectWS(attack);
       setActive(true);
     } catch (err) {
       console.error(err);
@@ -36,18 +37,20 @@ export default function UnifiedCheckpoint() {
     setActive(false);
     setStatus("Disconnected");
     setVerdict(null);
+    setInfo(null);
   };
 
-  const connectWS = () => {
-    const ws = new WebSocket(`ws://localhost:8001/ws/unified-verify`);
+  const connectWS = (simulateAttack) => {
+    const ws = new WebSocket(`ws://localhost:8001/ws/unified-verify?condition=${simulateAttack ? 'impersonation' : 'genuine'}`);
     ws.binaryType = "arraybuffer";
     
     ws.onopen = () => setStatus("Connected to Unified Secure Core");
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setFgScore(data.faceguard_score);
-      setVerdict(data.overall_verdict); // "ATTACK_BLOCKED", "SECURE_VERIFIED", "UNKNOWN_IDENTITY"
+      if (data.error) { setStatus(data.error); return; }
+      setInfo(data);
+      setVerdict(data.overall_verdict); // "ATTACK_BLOCKED", "SECURE_VERIFIED", "UNKNOWN_IDENTITY", "NO_FACE"
     };
 
     wsRef.current = ws;
@@ -78,7 +81,9 @@ export default function UnifiedCheckpoint() {
   const getVerdictStyle = () => {
     if (verdict === "ATTACK_BLOCKED") return { color: "#ff2d6b", text: "DEEPFAKE ATTACK DETECTED - VERIFICATION BLOCKED", icon: <ShieldAlert size={48} color="#ff2d6b"/> };
     if (verdict === "SECURE_VERIFIED") return { color: "#00e5ff", text: "IDENTITY VERIFIED - SECURE", icon: <UserCheck size={48} color="#00e5ff"/> };
-    return { color: "#ffaa00", text: "ANALYZING IDENTITY...", icon: <AlertTriangle size={48} color="#ffaa00"/> };
+    if (verdict === "UNKNOWN_IDENTITY") return { color: "#ffaa00", text: "FACE IS REAL BUT NOT ENROLLED - ACCESS DENIED", icon: <AlertTriangle size={48} color="#ffaa00"/> };
+    if (verdict === "NO_FACE") return { color: "#8899aa", text: "NO FACE IN FRAME", icon: <AlertTriangle size={48} color="#8899aa"/> };
+    return { color: "#ffaa00", text: "ANALYZING...", icon: <AlertTriangle size={48} color="#ffaa00"/> };
   };
 
   const vStyle = getVerdictStyle();
@@ -87,7 +92,7 @@ export default function UnifiedCheckpoint() {
     <div style={{ padding: '2rem', color: 'white', fontFamily: 'monospace' }}>
       <h1>Unified Security Checkpoint</h1>
       <p style={{ color: 'var(--text-muted)' }}>
-        Simultaneous Face Recognition (DL_project) + Deepfake Forensics (FaceGuard).
+        ArcFace identity matching + an adversarially-trained face-swap detector that can veto an identity match.
       </p>
 
       <div style={{ display: 'flex', gap: '2rem', marginTop: '2rem' }}>
@@ -96,6 +101,9 @@ export default function UnifiedCheckpoint() {
           <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
           
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
+            <label style={{ alignSelf: 'center', opacity: active ? 0.5 : 1 }}>
+              <input type="checkbox" checked={attack} disabled={active} onChange={e => setAttack(e.target.checked)} /> Simulate face-swap attack (impersonate enrolled "Alice")
+            </label>
             <button onClick={active ? stopCamera : startCamera} style={{ padding: '10px 20px', cursor: 'pointer', background: active ? '#ff2d6b' : '#00e5ff', color: 'black', fontWeight: 'bold', border: 'none' }}>
               {active ? 'Terminate Session' : 'Initiate Secure Verification'}
             </button>
@@ -109,10 +117,12 @@ export default function UnifiedCheckpoint() {
               {vStyle.icon}
               <h2 style={{ color: vStyle.color, marginTop: '1rem', textAlign: 'center' }}>{vStyle.text}</h2>
               <div style={{ marginTop: '2rem', width: '100%', background: 'rgba(0,0,0,0.5)', padding: '1rem' }}>
-                <p><strong>FaceGuard Forensic Score:</strong> {(fgScore * 100).toFixed(2)}% Fake</p>
+                <p><strong>Swap probability:</strong> {info && info.swap_probability != null ? (info.swap_probability * 100).toFixed(1) + '%' : '-'}</p>
                 <div style={{ width: '100%', height: '10px', background: '#333', marginTop: '10px' }}>
-                  <div style={{ width: `${fgScore * 100}%`, height: '100%', background: fgScore > 0.4 ? '#ff2d6b' : '#00e5ff' }} />
+                  <div style={{ width: `${(info && info.swap_probability != null ? info.swap_probability : 0) * 100}%`, height: '100%', background: info && info.swap_probability >= 0.5 ? '#ff2d6b' : '#00e5ff' }} />
                 </div>
+                <p><strong>ArcFace identity:</strong> {info && info.identity ? `${info.identity} (similarity ${info.identity_similarity.toFixed(2)})` : 'no match'}</p>
+                <p style={{ color: 'var(--text-muted)' }}>{info && info.reason}</p>
               </div>
             </>
           ) : (

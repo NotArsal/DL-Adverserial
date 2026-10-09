@@ -23,6 +23,8 @@ insightface==0.7.3
 opencv-python-headless>=4.9.0
 numpy==1.26.4
 
-# Utilities
+# Utilities (evaluation / swap-detector training)
+scikit-learn
+matplotlib
 pyyaml
 pytest

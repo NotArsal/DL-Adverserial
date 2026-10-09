@@ -36,13 +36,22 @@ import main as fg_main
 from src.api.server import app as dl_app, lifespan as dl_lifespan
 import src.api.server as dl_server
 
+sys.path.insert(0, ROOT_DIR)
+from swapdet import SwapDetector, decide
+SWAP_THRESHOLD = 0.5   # P(swap) at/above this blocks the attempt, even if ArcFace matches an identity
+EMA_ALPHA = 0.5        # temporal smoothing of P(swap) across frames
+swap_detector = None
+
 @asynccontextmanager
 async def unified_lifespan(app: FastAPI):
     print("--- Starting Unified API ---")
-    print("1/2 Initializing FaceGuard models...")
+    print("1/3 Initializing FaceGuard models (used by the /faceguard video/image forensics endpoints)...")
     await fg_main.startup_event()
     
-    print("2/2 Initializing DL_project pipeline...")
+    print("2/3 Loading adversarially-trained swap detector...")
+    global swap_detector
+    swap_detector = SwapDetector()
+    print("3/3 Initializing DL_project pipeline...")
     async with dl_lifespan(dl_app):
         print("--- Unified API Ready ---")
         yield
@@ -55,7 +64,7 @@ app = FastAPI(title="Unified API (FaceGuard + DL_project)", lifespan=unified_lif
 # Add CORS middleware to allow the React frontend to communicate with the root endpoints
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=fg_main.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,7 +77,8 @@ app.mount("/dl", dl_app)
 @app.websocket("/ws/unified-verify")
 async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
     """
-    Takes a single frame, runs FaceGuard for forensics AND DL_project for identity/liveness.
+    Per frame: ArcFace identity (+ optional InSwapper attack when condition=impersonation), then the
+    adversarially-trained swap detector, which can veto an identity match.
     """
     await websocket.accept()
     
@@ -78,6 +88,7 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
         return
 
     frame_id = 0
+    ema_p = None
     try:
         while True:
             # Receive binary JPEG bytes (Optimization from previous step)
@@ -89,35 +100,39 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
             frame_bgr = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             if frame_bgr is None: continue
             
-            # --- 1. FaceGuard Forensics ---
-            rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-            def predict_fg(f):
-                from main import preprocess_frame # Local import to avoid circular issues if any
-                return float(fg_main.model.predict(preprocess_frame(f), verbose=0)[0][0])
-            
-            fg_score = await asyncio.to_thread(predict_fg, rgb)
-            
-            # --- 2. DL_project Identity & Face-Swap ---
+            # --- 1. Identity (ArcFace) + optional simulated swap attack (InSwapper) ---
             async with dl_server.pipeline_lock:
                 dl_result = await asyncio.to_thread(
                     dl_server.pipeline_instance.process_frame, 
                     frame_bgr, condition, frame_id
                 )
+                scored_bgr = dl_server.pipeline_instance.last_processed_frame
+                bbox = dl_server.pipeline_instance.last_face_bbox
             
-            # --- 3. Combined Decision ---
-            if condition == "impersonation":
-                # Override because our live face swapper model is missing, so we're mocking the swap.
-                # If we don't override, FaceGuard will score the raw webcam frame as genuine.
-                fg_score = max(fg_score, 0.85)
-                
-            is_deepfake = fg_score > 0.40
+            # --- 2. Swap detector on the face crop of the frame the verifier actually sees ---
+            if bbox is None:
+                ema_p = None  # no face: reset temporal state
+                p_swap = None
+            else:
+                p_raw = await asyncio.to_thread(swap_detector.p_swap, scored_bgr, bbox)
+                ema_p = p_raw if ema_p is None else EMA_ALPHA * p_raw + (1 - EMA_ALPHA) * ema_p
+                p_swap = ema_p
+            
+            # --- 3. Decision: the detector can veto an identity match ---
+            identity = dl_result.get("matched_identity")
+            id_ok = bool(dl_result.get("model_a_accept"))
+            verdict, reason = decide(p_swap, id_ok, identity, SWAP_THRESHOLD)
             
             response = {
                 "frame_id": frame_id,
-                "faceguard_score": fg_score,
-                "is_deepfake": is_deepfake,
+                "condition": condition,
+                "swap_probability": p_swap,
+                "identity": identity if id_ok else None,
+                "identity_similarity": dl_result.get("model_a_similarity"),
+                "identity_accepted_by_arcface": id_ok,
+                "overall_verdict": verdict,
+                "reason": reason,
                 "dl_project_result": dl_result,
-                "overall_verdict": "ATTACK_BLOCKED" if is_deepfake else "SECURE_VERIFIED" if dl_result.get("identity_match") else "UNKNOWN_IDENTITY"
             }
             
             await websocket.send_json(response)
