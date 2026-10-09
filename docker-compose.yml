@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: deepfake-forensic-api
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_PATH=/app/FaceGuard-Digital-Forensic-System/models/faceguard_phase2_finetuned.h5
+      - DEMO_REFERENCE_DIR=/app/DL_project/sample_data/lfw/Angelina_Jolie
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    volumes:
+      - .:/app
+
+  frontend:
+    build:
+      context: ./FaceGuard-Digital-Forensic-System/frontend
+      dockerfile: Dockerfile
+    container_name: deepfake-forensic-ui
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    # Hot-reload volume mapping
+    volumes:
+      - ./FaceGuard-Digital-Forensic-System/frontend/src:/app/src
+      - ./FaceGuard-Digital-Forensic-System/frontend/public:/app/public
