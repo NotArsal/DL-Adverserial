@@ -27,7 +27,7 @@ model = None
 async def startup_event():
     global model
     model = load_faceguard_model()
-    print("✅ FaceGuard model loaded.")
+    print(" FaceGuard model loaded.")
 
 
 @app.get("/")
@@ -40,7 +40,7 @@ async def health():
     return {"status": "ok", "model_loaded": model is not None}
 
 
-# ─── IMAGE ANALYSIS ────────────────────────────────────────────────────────────
+#  IMAGE ANALYSIS 
 @app.post("/analyze/image")
 async def analyze_image(file: UploadFile = File(...)):
     try:
@@ -63,7 +63,7 @@ async def analyze_image(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-# ─── VIDEO FORENSICS — SSE STREAMING ──────────────────────────────────────────
+#  VIDEO FORENSICS  SSE STREAMING 
 @app.get("/analyze/video/stream")
 async def analyze_video_stream(path: str):
     """
@@ -190,7 +190,7 @@ async def upload_video(file: UploadFile = File(...)):
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-# ─── LEGACY: non-streaming video endpoint (kept for compatibility) ─────────────
+#  LEGACY: non-streaming video endpoint (kept for compatibility) 
 @app.post("/analyze/video")
 async def analyze_video(file: UploadFile = File(...)):
     tmp_path = None
@@ -243,7 +243,7 @@ async def analyze_video(file: UploadFile = File(...)):
                 pass
 
 
-# ─── LIVE WEBCAM WEBSOCKET ─────────────────────────────────────────────────────
+#  LIVE WEBCAM WEBSOCKET 
 @app.websocket("/ws/webcam")
 async def webcam_ws(websocket: WebSocket):
     await websocket.accept()

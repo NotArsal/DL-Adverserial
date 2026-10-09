@@ -4,11 +4,14 @@ import cv2
 
 class NativeInSwapper:
     def __init__(self, model_path="models/inswapper_128.onnx"):
+        self.model_path = model_path
+        self.is_mock = False
         if not os.path.exists(model_path):
-            raise FileNotFoundError(f"Native InSwapper model not found at {model_path}")
-        
-        # Load the model once
-        self.swapper = insightface.model_zoo.get_model(model_path, download=False, download_zip=False)
+            print(f"Warning: {model_path} not found. Running in MOCK swap mode.")
+            self.swapper = None
+            self.is_mock = True
+        else:
+            self.swapper = insightface.model_zoo.get_model(model_path, download=False, download_zip=False)
         self.source_face = None
 
     def set_source_face(self, source_face):
@@ -31,6 +34,14 @@ class NativeInSwapper:
             
         result_frame = target_frame_bgr.copy()
         
+        if self.is_mock:
+            # Just draw a red box and text to indicate "Simulated Deepfake"
+            for face in target_faces:
+                box = face.bbox.astype(int)
+                cv2.rectangle(result_frame, (box[0], box[1]), (box[2], box[3]), (0, 0, 255), 2)
+                cv2.putText(result_frame, "SIMULATED DEEPFAKE", (box[0], box[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            return result_frame
+            
         # Swap onto all detected faces in the target frame
         for face in target_faces:
             result_frame = self.swapper.get(result_frame, face, self.source_face, paste_back=True)

@@ -14,7 +14,8 @@ requests==2.31.0
 tensorflow==2.15.0
 torch==2.5.1+cu121
 torchvision==0.20.1+cu121
-onnxruntime-gpu==1.23.2
+onnx==1.15.0
+onnxruntime-gpu==1.16.3
 
 # Facial Recognition / Computer Vision
 insightface==0.7.3

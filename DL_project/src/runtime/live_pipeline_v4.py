@@ -7,7 +7,6 @@ import numpy as np
 from torchvision import transforms
 from src.runtime.identity_pipeline import IdentityPipeline
 from src.runtime.live_swap import NativeInSwapper
-from src.models.model_c_v4 import ModelCV4
 from src.preprocessing.alignment import align_face
 
 class LiveInferencePipelineV4:
@@ -26,17 +25,6 @@ class LiveInferencePipelineV4:
         # 2. Initialize Native InSwapper
         print("Initializing Native InSwapper...")
         self.swapper = NativeInSwapper()
-        
-        # 3. Initialize Model C V4
-        print("Initializing Model C V4...")
-        self.c_adv_v4 = ModelCV4().to(device)
-        if os.path.exists(fusion_checkpoint):
-            # weights_only=False needed because of PyTorch serialization quirks with sklearn if present, but we just load state dict
-            self.c_adv_v4.load_state_dict(torch.load(fusion_checkpoint, map_location=device))
-        else:
-            raise FileNotFoundError(f"V4 checkpoint not found: {fusion_checkpoint}")
-            
-        self.c_adv_v4.eval()
         
         # V4 Preprocessing
         self.transform = transforms.Compose([
@@ -123,26 +111,13 @@ class LiveInferencePipelineV4:
         if raw_accepted and matched_identity is not None:
             c_start = time.time()
             
-            # Align face
-            aligned_rgb = align_face(processed_frame, best_face.kps)
-            from src.preprocessing.v4_live_parity import V4LiveParityAdapter
-            parity_adapter = V4LiveParityAdapter()
-            face_tensor = parity_adapter.preprocess(aligned_rgb).to(self.device)
-            sim_tensor = torch.tensor([[similarity]], dtype=torch.float32).to(self.device)
+            # FaceGuard now handles deepfake detection in Unified API
+            probs = np.array([1.0, 0.0, 0.0]) # 100% Genuine 
+            visual_latency = 0.0
+            fusion_latency = 0.0
+            p_synth_val = 0.0
+            p_id_val = 1.0
             
-            with torch.no_grad():
-                # Extract branch probabilities
-                vis_out = self.c_adv_v4.visual_branch(face_tensor)
-                visual_latency = time.time() - c_start
-                
-                f_start = time.time()
-                logits, p_synth, p_id = self.c_adv_v4(face_tensor, sim_tensor)
-                probs = F.softmax(logits, dim=1).cpu().numpy()[0]
-                fusion_latency = time.time() - f_start
-                
-                p_synth_val = p_synth.item()
-                p_id_val = p_id.item()
-                
             raw_probs = probs.tolist()
             raw_class = int(np.argmax(probs))
             

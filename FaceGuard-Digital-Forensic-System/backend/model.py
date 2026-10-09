@@ -17,7 +17,7 @@ def load_faceguard_model():
     try:
         from tensorflow.keras.models import load_model
         _model = load_model(MODEL_PATH)
-        print(f"✅ Model loaded from {MODEL_PATH}")
+        print(f"Model loaded from {MODEL_PATH}")
         return _model
     except Exception as e:
         raise RuntimeError(f"Failed to load model from {MODEL_PATH}: {e}")

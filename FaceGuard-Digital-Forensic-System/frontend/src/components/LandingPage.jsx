@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import './LandingPage.css';
-import Aurora from './Aurora';
-import LogoLoop from './LogoLoop';
 import { FaGithub, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
 import { Image, Film, Camera, Info, X, Shield, Cpu, Database, Zap } from 'lucide-react';
 
@@ -50,11 +48,11 @@ const STATS = [
 
 export default function LandingPage({ onEnter }) {
   const [hovered, setHovered] = useState(null);
-  const [showAbout, setShowAbout] = useState(false);
+  
 
   return (
     <div className="landing">
-      <Aurora colorStops={['#00d4ff', '#7c3aed', '#00d4ff']} amplitude={1.2} blend={0.6} speed={0.8} />
+      
       <div className="landing-grain" />
       <div className="landing-grid" />
 
@@ -71,9 +69,7 @@ export default function LandingPage({ onEnter }) {
             <div className="landing-logo-sub">FORENSIC ENGINE v3.0</div>
           </div>
         </div>
-        <button className="landing-about-btn" onClick={() => setShowAbout(true)}>
-          <Info size={15} /><span>About</span>
-        </button>
+        
       </header>
 
       {/* Main */}
@@ -148,69 +144,11 @@ export default function LandingPage({ onEnter }) {
       </main>
 
       {/* Footer */}
-      <footer className="landing-footer">
-        <div className="landing-footer-line" />
-        <div className="landing-footer-inner">
-          <span className="landing-footer-text">Built by Hiba V S · IES College of Engineering</span>
-          <div style={{ width: 180, overflow: 'hidden' }}>
-            <LogoLoop
-              logos={socialLogos}
-              speed={55}
-              direction="left"
-              logoHeight={20}
-              gap={36}
-              hoverSpeed={0}
-              scaleOnHover
-              fadeOut
-              fadeOutColor="#030508"
-              ariaLabel="Social links"
-            />
-          </div>
-        </div>
-      </footer>
-
-      {/* About Modal */}
-      {showAbout && (
-        <div className="landing-modal-overlay" onClick={() => setShowAbout(false)}>
-          <div className="landing-modal" onClick={e => e.stopPropagation()}>
-            <div className="lmodal-glass-base" />
-            <div className="lmodal-glass-shine" />
-            <button className="lmodal-close" onClick={() => setShowAbout(false)}><X size={17} /></button>
-
-            <div className="lmodal-header">
-              <Shield size={22} style={{ color: '#00d4ff' }} />
-              <h2 className="lmodal-title">About FaceGuard</h2>
-            </div>
-
-            <p className="lmodal-body">
-              FaceGuard is a real-time deepfake detection and identity forensics system
-              built at IES College of Engineering, Thrissur.
-              It uses a fine-tuned MobileNetV2 CNN trained on the FaceForensics++ dataset,
-              with MediaPipe-based face detection and temporal smoothing for robust real-world performance.
-            </p>
-
-            <div className="lmodal-devs">
-              <div className="lmodal-dev" style={{ gridColumn: '1 / -1' }}>
-                <div className="lmodal-dev-name">Hiba V S</div>
-                <div className="lmodal-dev-role">IES23CD008 · CSE Data Science</div>
-              </div>
-            </div>
-
-            <div className="lmodal-tech">
-              {['MobileNetV2', 'FastAPI', 'React', 'MediaPipe', 'TensorFlow', 'FaceForensics++'].map(t => (
-                <span key={t} className="lmodal-chip">{t}</span>
-              ))}
-            </div>
-
-            <div className="lmodal-guide">
-              Department of CSE (Data Science) · IES College of Engineering
-            </div>
-
-            <div className="lmodal-corner lmodal-corner--tl" />
-            <div className="lmodal-corner lmodal-corner--br" />
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+
+
+
+

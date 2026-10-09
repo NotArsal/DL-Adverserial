@@ -3,7 +3,7 @@ import { Camera, CameraOff, Wifi, WifiOff } from 'lucide-react';
 import RiskGauge from './RiskGauge';
 import useFaceMesh from './useFaceMesh';
 
-const API_WS = (process.env.REACT_APP_API_URL || 'http://localhost:8000').replace(/^http/, 'ws');
+const API_WS = (process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard').replace(/^http/, 'ws');
 const SEND_INTERVAL_MS = 200;
 
 export default function WebcamScan({ threshold }) {

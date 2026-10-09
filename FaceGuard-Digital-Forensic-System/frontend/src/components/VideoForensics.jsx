@@ -4,7 +4,7 @@ import { Film, ScanLine, AlertTriangle, CheckCircle, Play, Pause } from 'lucide-
 import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, ResponsiveContainer, Cell } from 'recharts';
 import useFaceMesh from './useFaceMesh';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard';
 
 const ChartTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;

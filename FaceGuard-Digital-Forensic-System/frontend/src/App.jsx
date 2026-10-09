@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './index.css';
 import LandingPage from './components/LandingPage';
-import Aurora from './components/Aurora';
 import ImageAnalysis from './components/ImageAnalysis';
 import VideoForensics from './components/VideoForensics';
 import WebcamScan from './components/WebcamScan';
@@ -9,7 +8,7 @@ import DeepfakeGenerator from './components/DeepfakeGenerator';
 import UnifiedCheckpoint from './components/UnifiedCheckpoint';
 import { Image, Film, Camera, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard';
 
 const MODES = [
   { id: 'image',  label: 'Image Analysis',   Icon: Image  },
@@ -33,82 +32,13 @@ export default function App() {
       .catch(() => setApiOnline(false));
   }, []);
 
-  const enterApp = (selectedMode) => {
-    setTransState('exit');
-    setTimeout(() => {
-      setMode(selectedMode);
-      setView('app');
-      setTransState('enter');
-      setTimeout(() => setTransState('idle'), 700);
-    }, 450);
-  };
-
-  const backToLanding = () => {
-    setTransState('exit');
-    setTimeout(() => {
-      setView('landing');
-      setTransState('enter');
-      setTimeout(() => setTransState('idle'), 700);
-    }, 450);
-  };
-
-  const switchMode = (newMode) => {
-    if (newMode === mode) return;
-    setTransState('exit');
-    setTimeout(() => {
-      setMode(newMode);
-      setTransState('enter');
-      setTimeout(() => setTransState('idle'), 500);
-    }, 220);
-  };
-
-  const transClass = transState === 'exit' ? 'view-exit' : transState === 'enter' ? 'view-enter' : 'view-idle';
+    const enterApp = (selectedMode) => { setMode(selectedMode); setView('app'); };
+  const backToLanding = () => { setView('landing'); };
+  const switchMode = (newMode) => { setMode(newMode); };
 
   return (
     <>
-      {/* Transition scanline overlay */}
-      <div className={`trans-overlay ${transState !== 'idle' ? 'trans-overlay--active' : ''}`}>
-        <div className="trans-scanline" />
-      </div>
-
-      {/* Landing */}
-      {view === 'landing' && (
-        <div className={`view-wrap ${transClass}`}>
-          <LandingPage onEnter={enterApp} />
-        </div>
-      )}
-
-      {/* App */}
-      {view === 'app' && (
-        <div className={`view-wrap app-shell ${transClass}`}>
-
-          {/* ── Aurora background inside app ── */}
-          <div className="app-aurora">
-            <Aurora
-              colorStops={['#0066aa', '#3d1080', '#0066aa']}
-              amplitude={1.1}
-              blend={0.55}
-              speed={0.4}
-            />
-          </div>
-          <div className="app-grid" />
-
-          {/* Header */}
-          <header className="header">
-            <div className="logo">
-              <button className="back-btn" onClick={backToLanding} title="Back to home">
-                <ArrowLeft size={15} />
-              </button>
-              <div className="logo-icon">
-                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                  <path d="M9 1L16.5 5v8L9 17 1.5 13V5L9 1z" stroke="#00e5ff" strokeWidth="1.2" fill="none" />
-                  <path d="M9 5l4.5 2.5v5L9 15 4.5 12.5v-5L9 5z" fill="rgba(0,229,255,0.12)" stroke="#00e5ff" strokeWidth="0.8" />
-                </svg>
-              </div>
-              <div>
-                <div className="logo-text"><span>FACE</span>GUARD</div>
-                <div className="logo-version">FORENSIC ENGINE v3.0 — NEURAL DEEPFAKE DETECTION</div>
-              </div>
+      
             </div>
             <div className="header-status">
               <div className="status-dot" style={{
@@ -172,7 +102,7 @@ export default function App() {
 
             {/* Content */}
             <section className="content">
-              <div className={`mode-wrap ${transState === 'exit' ? 'mode-exit' : transState === 'enter' ? 'mode-enter' : ''}`}>
+              <div className="mode-wrap">
                 {mode === 'image'  && <ImageAnalysis threshold={threshold} />}
                 {mode === 'video'  && <VideoForensics threshold={threshold} />}
                 {mode === 'webcam' && <WebcamScan threshold={threshold} />}
@@ -200,3 +130,6 @@ export default function App() {
     </>
   );
 }
+
+
+

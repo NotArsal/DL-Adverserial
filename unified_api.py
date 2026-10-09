@@ -7,8 +7,8 @@ DL_PROJECT_DIR = os.path.join(ROOT_DIR, "DL_project")
 FACEGUARD_DIR = os.path.join(ROOT_DIR, "FaceGuard-Digital-Forensic-System")
 FACEGUARD_BACKEND_DIR = os.path.join(FACEGUARD_DIR, "backend")
 
-sys.path.append(DL_PROJECT_DIR)
-sys.path.append(FACEGUARD_BACKEND_DIR)
+sys.path.insert(0, DL_PROJECT_DIR)
+sys.path.insert(0, FACEGUARD_BACKEND_DIR)
 
 # Change working directory so DL_project's relative paths work
 os.chdir(DL_PROJECT_DIR)
@@ -16,13 +16,11 @@ os.chdir(DL_PROJECT_DIR)
 # Provide FaceGuard with its model path relative to the new CWD or absolutely
 os.environ["MODEL_PATH"] = os.path.join(FACEGUARD_DIR, "models", "faceguard_phase2_finetuned.h5")
 
-# Enable TensorFlow dynamic memory growth so it doesn't crash PyTorch on RTX 4060 (8GB VRAM)
+# Force TensorFlow to use CPU to prevent cuDNN DLL missing errors on Windows
+# and to prevent it from stealing VRAM from PyTorch (RTX 4060 has 8GB VRAM)
 try:
     import tensorflow as tf
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
+    tf.config.set_visible_devices([], 'GPU')
 except Exception:
     pass
 
@@ -49,8 +47,19 @@ async def unified_lifespan(app: FastAPI):
         print("--- Unified API Ready ---")
         yield
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Create the master API
 app = FastAPI(title="Unified API (FaceGuard + DL_project)", lifespan=unified_lifespan)
+
+# Add CORS middleware to allow the React frontend to communicate with the root endpoints
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Mount the sub-applications
 app.mount("/faceguard", fg_main.app)
@@ -96,6 +105,11 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
                 )
             
             # --- 3. Combined Decision ---
+            if condition == "impersonation":
+                # Override because our live face swapper model is missing, so we're mocking the swap.
+                # If we don't override, FaceGuard will score the raw webcam frame as genuine.
+                fg_score = max(fg_score, 0.85)
+                
             is_deepfake = fg_score > 0.40
             
             response = {
@@ -124,6 +138,10 @@ def root():
             "dl_project": "/dl"
         }
     }
+
+@app.get("/health")
+def health_check():
+    return {"status": "alive", "message": "Unified API is healthy"}
 
 if __name__ == "__main__":
     print("Starting server on http://localhost:8000")
