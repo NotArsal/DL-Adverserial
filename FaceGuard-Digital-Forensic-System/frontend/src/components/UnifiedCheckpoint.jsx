@@ -45,10 +45,12 @@ export default function UnifiedCheckpoint() {
     ws.binaryType = "arraybuffer";
     
     ws.onopen = () => setStatus("Connected to Unified Secure Core");
+    ws.onclose = () => { setVerdict(null); setInfo(null); setStatus("Disconnected"); };
+    ws.onerror = () => setStatus("Connection error - is the backend running on :8001?");
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.error) { setStatus(data.error); return; }
+      if (data.error) { setStatus(data.error); setVerdict(null); setInfo(null); return; }  // never leave a stale VERIFIED on screen
       setInfo(data);
       setVerdict(data.overall_verdict); // "ATTACK_BLOCKED", "SECURE_VERIFIED", "UNKNOWN_IDENTITY", "NO_FACE"
     };

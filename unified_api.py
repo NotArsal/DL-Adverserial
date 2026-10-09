@@ -38,6 +38,7 @@ import src.api.server as dl_server
 
 sys.path.insert(0, ROOT_DIR)
 from swapdet import SwapDetector, decide
+MAX_FRAME_BYTES = 2 * 1024 * 1024
 SWAP_THRESHOLD = 0.5   # P(swap) at/above this blocks the attempt, even if ArcFace matches an identity
 EMA_ALPHA = 0.5        # temporal smoothing of P(swap) across frames
 swap_detector = None
@@ -87,13 +88,18 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
         await websocket.close()
         return
 
+    if condition == "impersonation" and dl_server.pipeline_instance.swapper.source_face is None:
+        await websocket.send_json({"error": "Attack simulation needs a source identity to impersonate. Run `python make_demo_identity.py` (or enroll one in the Deepfake Generator tab), then restart."})
+        await websocket.close()
+        return
+
     frame_id = 0
     ema_p = None
     try:
         while True:
             # Receive binary JPEG bytes (Optimization from previous step)
             data = await websocket.receive_bytes()
-            if not data: continue
+            if not data or len(data) > MAX_FRAME_BYTES: continue  # drop empty/oversized frames
             
             # Decode frame
             np_arr = np.frombuffer(data, np.uint8)
@@ -130,6 +136,7 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
                 "identity": identity if id_ok else None,
                 "identity_similarity": dl_result.get("model_a_similarity"),
                 "identity_accepted_by_arcface": id_ok,
+                "swap_applied": dl_result.get("swap_applied"),
                 "overall_verdict": verdict,
                 "reason": reason,
                 "dl_project_result": dl_result,
@@ -143,6 +150,10 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
     except Exception as e:
         import traceback
         traceback.print_exc()
+        try:  # fail closed and tell the UI, instead of silently freezing the last verdict
+            await websocket.send_json({"error": f"Verification error: {type(e).__name__}"})
+        except Exception:
+            pass
 
 @app.get("/")
 def root():

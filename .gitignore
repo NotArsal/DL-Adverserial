@@ -18,4 +18,5 @@ data/
 eval_results/*.log
 nohup.out
 # keep the small trained swap detector so the demo runs from a fresh clone
-!models/swapdet_adversarial.pt
+!models/swapdet_deployed.pt
+DL_project/sample_data/

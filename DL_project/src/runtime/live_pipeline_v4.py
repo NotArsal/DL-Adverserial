@@ -65,7 +65,7 @@ class LiveInferencePipelineV4:
         if condition == "impersonation":
             target_faces = self.identity_pipeline.engine.extract_faces(frame_bgr)
             processed_frame = self.swapper.process_frame(frame_bgr, target_faces)
-            swap_applied = True
+            swap_applied = bool(target_faces) and self.swapper.source_face is not None  # no source identity => nothing was swapped
         else:
             processed_frame = frame_bgr
             swap_applied = False

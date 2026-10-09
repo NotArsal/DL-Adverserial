@@ -4,7 +4,7 @@ import numpy as np, cv2, torch, torch.nn as nn
 from torchvision.models import mobilenet_v2, MobileNet_V2_Weights
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-WEIGHTS = os.path.join(ROOT, "models", "swapdet_adversarial.pt")
+WEIGHTS = os.path.join(ROOT, "models", "swapdet_deployed.pt")
 
 class Net(nn.Module):  # takes [0,1] RGB so L-inf eps is in true pixel units
     def __init__(s, pretrained=False):
