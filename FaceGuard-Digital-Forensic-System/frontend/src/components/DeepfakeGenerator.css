@@ -5,15 +5,15 @@
   padding: 20px;
 }
 
-.dl-project-wrapper .header {
+.dl-project-wrapper .generator-header {
   margin-bottom: 30px;
-  border-bottom: 2px solid #e1e4e8;
+  border-bottom: 2px solid var(--border);
   padding-bottom: 20px;
 }
 
-h1 {
+.dl-project-wrapper h1 {
   font-size: 1.5rem;
-  color: #2c3e50;
+  color: var(--text-primary);
   margin-top: 0;
 }
 
@@ -28,7 +28,7 @@ h1 {
   border-radius: 15px;
   font-size: 0.85rem;
   font-weight: 600;
-  background-color: #e1e4e8;
+  background-color: var(--border);
   color: #586069;
 }
 
@@ -63,7 +63,7 @@ h1 {
 }
 
 .dl-project-wrapper .video-wrapper {
-  background-color: #000;
+  background-color: var(--text-primary);
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -82,7 +82,7 @@ video {
 .dl-project-wrapper .methodology-panel {
   margin-top: 20px;
   padding: 15px;
-  background-color: #fff;
+  background-color: var(--theme-surface-1);
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   font-size: 0.9rem;
@@ -153,7 +153,7 @@ video {
 }
 
 .dl-project-wrapper .detail-card {
-  background-color: #fff;
+  background-color: var(--theme-surface-1);
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -162,9 +162,9 @@ video {
 .dl-project-wrapper .detail-card h4 {
   margin-top: 0;
   margin-bottom: 10px;
-  color: #495057;
+  color: var(--text-secondary);
   font-size: 0.95rem;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 5px;
 }
 
@@ -192,7 +192,7 @@ video {
 }
 
 .dl-project-wrapper .panel {
-  background-color: #fff;
+  background-color: var(--theme-surface-1);
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.05);
@@ -202,8 +202,8 @@ video {
 .dl-project-wrapper .panel h2 {
   margin-top: 0;
   font-size: 1.2rem;
-  color: #2c3e50;
-  border-bottom: 1px solid #e9ecef;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 10px;
   margin-bottom: 15px;
 }
@@ -222,7 +222,7 @@ video {
 .dl-project-wrapper .form-group input[type="text"], .form-group input[type="file"] {
   width: 100%;
   padding: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--border); background-color: var(--theme-surface-2); color: var(--text-primary);
   border-radius: 4px;
 }
 
@@ -244,7 +244,7 @@ video {
 .dl-project-wrapper .enroll-status {
   margin-top: 15px;
   padding: 10px;
-  background-color: #e2e3e5;
+  background-color: var(--theme-surface-2);
   border-radius: 4px;
   font-weight: bold;
   font-size: 0.9rem;
@@ -259,7 +259,7 @@ video {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #f8f9fa;
+  background-color: var(--bg-deep);
   padding: 15px;
   border-radius: 6px;
   font-weight: bold;
@@ -301,3 +301,7 @@ video {
 .dl-project-wrapper .hidden-video {
   opacity: 0;
 }
+
+
+
+

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import './LandingPage.css';
 import { FaGithub, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import { Image, Film, Camera, Info, X, Shield, Cpu, Database, Zap } from 'lucide-react';
+import { Image, Film, Camera, Info, X, Shield, Moon, Sun } from 'lucide-react';
 
 const MODES = [
   {
@@ -39,14 +39,9 @@ const socialLogos = [
   { node: <FaLinkedinIn />,title: 'LinkedIn',  href: 'https://linkedin.com/' },
 ];
 
-const STATS = [
-  { Icon: Cpu,      label: 'Model',     value: 'MobileNetV2' },
-  { Icon: Database, label: 'Dataset',   value: 'FaceForensics++' },
-  { Icon: Shield,   label: 'Accuracy',  value: '92.8%' },
-  { Icon: Zap,      label: 'Inference', value: '0.04s/frame' },
-];
 
-export default function LandingPage({ onEnter }) {
+
+export default function LandingPage({ onEnter, theme, setTheme }) {
   const [hovered, setHovered] = useState(null);
   
 
@@ -70,6 +65,10 @@ export default function LandingPage({ onEnter }) {
           </div>
         </div>
         
+              <button className="landing-about-btn" onClick={() => setTheme(theme === 'linear' ? 'vercel' : 'linear')} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {theme === 'linear' ? <Sun size={15} /> : <Moon size={15} />}
+          <span>{theme === 'linear' ? 'Light' : 'Dark'}</span>
+        </button>
       </header>
 
       {/* Main */}
@@ -131,22 +130,19 @@ export default function LandingPage({ onEnter }) {
           ))}
         </div>
 
-        {/* Stats */}
-        <div className="landing-stats">
-          {STATS.map(({ Icon, label, value }) => (
-            <div className="landing-stat" key={label}>
-              <Icon size={13} />
-              <span className="landing-stat-label">{label}</span>
-              <span className="landing-stat-value">{value}</span>
-            </div>
-          ))}
-        </div>
+        
       </main>
 
       {/* Footer */}
     </div>
   );
 }
+
+
+
+
+
+
 
 
 

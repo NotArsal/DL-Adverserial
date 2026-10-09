@@ -209,7 +209,7 @@ export default function DeepfakeGenerator() {
   return (
     <div className="dl-project-wrapper">
       <div className="container">
-        <header className="header">
+        <header className="generator-header">
         <h1>Adversarially Robust Face Identity Verification Against Synthetic Face-Swap Impersonation</h1>
         <div className="status-bar">
           <span className={`status-badge ${wsConnected ? 'connected' : 'disconnected'}`}>
@@ -353,5 +353,6 @@ export default function DeepfakeGenerator() {
     </div>
   );
 }
+
 
 

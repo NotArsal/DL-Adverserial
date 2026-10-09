@@ -6,7 +6,7 @@ import VideoForensics from './components/VideoForensics';
 import WebcamScan from './components/WebcamScan';
 import DeepfakeGenerator from './components/DeepfakeGenerator';
 import UnifiedCheckpoint from './components/UnifiedCheckpoint';
-import { Image, Film, Camera, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
+import { Image, Moon, Sun, Film, Camera, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 
 const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard';
 
@@ -20,10 +20,14 @@ const MODES = [
 
 export default function App() {
   const [view, setView]             = useState('landing');
+  const [theme, setTheme]           = useState('linear');
   const [mode, setMode]             = useState('image');
   const [threshold, setThreshold]   = useState(0.40);
   const [apiOnline, setApiOnline]   = useState(null);
-  const [transState, setTransState] = useState('idle');
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
 
   useEffect(() => {
     fetch(`${API}/health`)
@@ -32,26 +36,55 @@ export default function App() {
       .catch(() => setApiOnline(false));
   }, []);
 
-    const enterApp = (selectedMode) => { setMode(selectedMode); setView('app'); };
+  const enterApp = (selectedMode) => { setMode(selectedMode); setView('app'); };
   const backToLanding = () => { setView('landing'); };
   const switchMode = (newMode) => { setMode(newMode); };
 
   return (
     <>
-      
+      {view === 'landing' && (
+        <div className="view-wrap">
+          <LandingPage onEnter={enterApp} theme={theme} setTheme={setTheme} />
+        </div>
+      )}
+
+      {view === 'app' && (
+        <div className="view-wrap app-shell">
+          <div className="app-grid" />
+
+          <header className="header">
+            <div className="logo">
+              <button className="back-btn" onClick={backToLanding} title="Back to home">
+                <ArrowLeft size={15} />
+              </button>
+              <div className="logo-icon">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M9 1L16.5 5v8L9 17 1.5 13V5L9 1z" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                  <path d="M9 5l4.5 2.5v5L9 15 4.5 12.5v-5L9 5z" fill="currentColor" opacity="0.2" stroke="currentColor" strokeWidth="0.8" />
+                </svg>
+              </div>
+              <div>
+                <div className="logo-text"><span>FACE</span>GUARD</div>
+                <div className="logo-version">FORENSIC ENGINE v3.0 — NEURAL DEEPFAKE DETECTION</div>
+              </div>
             </div>
-            <div className="header-status">
-              <div className="status-dot" style={{
-                background: apiOnline === null ? '#ffab00' : apiOnline ? 'var(--green)' : 'var(--magenta)',
-                boxShadow: `0 0 8px ${apiOnline === null ? '#ffab00' : apiOnline ? 'var(--green)' : 'var(--magenta)'}`,
-              }} />
-              {apiOnline === null ? 'CONNECTING...' : apiOnline ? 'NEURAL ENGINE ONLINE' : 'API OFFLINE'}
+            
+            <div style={{display: 'flex', alignItems: 'center'}}>
+              <button className="theme-toggle-btn" onClick={() => setTheme(theme === 'linear' ? 'vercel' : 'linear')} style={{ background: 'transparent', border: '1px solid var(--border)', borderRadius: '4px', padding: '4px 8px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginRight: '16px' }}>
+                {theme === 'linear' ? <Sun size={14} /> : <Moon size={14} />}
+                <span style={{ fontSize: '0.7rem' }}>{theme === 'linear' ? 'Light' : 'Dark'}</span>
+              </button>
+              <div className="header-status">
+                <div className="status-dot" style={{
+                  background: apiOnline === null ? 'var(--theme-amber)' : apiOnline ? 'var(--theme-success)' : 'var(--theme-danger)',
+                  boxShadow: `0 0 8px ${apiOnline === null ? 'var(--theme-amber)' : apiOnline ? 'var(--theme-success)' : 'var(--theme-danger)'}`,
+                }} />
+                {apiOnline === null ? 'CONNECTING...' : apiOnline ? 'NEURAL ENGINE ONLINE' : 'API OFFLINE'}
+              </div>
             </div>
           </header>
 
-          {/* Main */}
           <main className="main">
-            {/* Sidebar */}
             <aside className="sidebar">
               <div className="sidebar-label">Mode Select</div>
               {MODES.map(({ id, label, Icon }) => (
@@ -85,22 +118,8 @@ export default function App() {
                 </div>
               )}
 
-              <div style={{ marginTop: 'auto', paddingTop: 32 }}>
-                {[
-                  ['MODEL',     'MobileNetV2'],
-                  ['DATASET',   'FF++'],
-                  ['ACCURACY',  '92.8%', true],
-                  ['INFERENCE', '0.04s/frame'],
-                ].map(([k, v, hi]) => (
-                  <div className="stat-row" key={k}>
-                    <span className="stat-key">{k}</span>
-                    <span className="stat-val" style={hi ? { color: 'var(--cyan)', fontSize: '0.6rem' } : { fontSize: '0.6rem' }}>{v}</span>
-                  </div>
-                ))}
-              </div>
-            </aside>
+              </aside>
 
-            {/* Content */}
             <section className="content">
               <div className="mode-wrap">
                 {mode === 'image'  && <ImageAnalysis threshold={threshold} />}
@@ -112,7 +131,6 @@ export default function App() {
             </section>
           </main>
 
-          {/* Mobile bottom nav */}
           <nav className="mobile-nav">
             {MODES.map(({ id, label, Icon }) => (
               <button
