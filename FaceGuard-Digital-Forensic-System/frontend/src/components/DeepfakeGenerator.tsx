@@ -66,7 +66,7 @@ export default function DeepfakeGenerator() {
   useEffect(() => {
     let isMounted = true;
     const condition = swapEnabled ? 'impersonation' : 'genuine';
-    const wsUrl = `ws://localhost:8000/dl/ws/inference?condition=${condition}`;
+    const wsUrl = `ws://localhost:8001/dl/ws/inference?condition=${condition}`;
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout>;
 
@@ -190,7 +190,7 @@ export default function DeepfakeGenerator() {
     
     setEnrollStatus("Enrolling...");
     try {
-      const res = await fetch("http://localhost:8000/dl/enroll", {
+      const res = await fetch("http://localhost:8001/dl/enroll", {
         method: "POST",
         body: formData
       });
@@ -353,6 +353,7 @@ export default function DeepfakeGenerator() {
     </div>
   );
 }
+
 
 
 

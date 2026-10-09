@@ -8,7 +8,7 @@ import DeepfakeGenerator from './components/DeepfakeGenerator';
 import UnifiedCheckpoint from './components/UnifiedCheckpoint';
 import { Image, Moon, Sun, Film, Camera, ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard';
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8001/faceguard';
 
 const MODES = [
   { id: 'image',  label: 'Image Analysis',   Icon: Image  },
@@ -148,6 +148,7 @@ export default function App() {
     </>
   );
 }
+
 
 
 

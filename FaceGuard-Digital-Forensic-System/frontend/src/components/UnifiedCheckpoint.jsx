@@ -39,7 +39,7 @@ export default function UnifiedCheckpoint() {
   };
 
   const connectWS = () => {
-    const ws = new WebSocket(`ws://localhost:8000/ws/unified-verify`);
+    const ws = new WebSocket(`ws://localhost:8001/ws/unified-verify`);
     ws.binaryType = "arraybuffer";
     
     ws.onopen = () => setStatus("Connected to Unified Secure Core");
@@ -126,3 +126,4 @@ export default function UnifiedCheckpoint() {
     </div>
   );
 }
+

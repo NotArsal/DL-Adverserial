@@ -4,7 +4,7 @@ import { Upload, ScanLine, AlertTriangle, CheckCircle } from 'lucide-react';
 import RiskGauge from './RiskGauge';
 import useFaceMesh from './useFaceMesh';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:8000/faceguard';
+const API = process.env.REACT_APP_API_URL || 'http://localhost:8001/faceguard';
 
 export default function ImageAnalysis({ threshold }) {
   const [file, setFile]       = useState(null);
@@ -174,3 +174,4 @@ export default function ImageAnalysis({ threshold }) {
     </div>
   );
 }
+
