@@ -21,11 +21,13 @@ docker-compose up --build
 
 # 2. Access the UI
 # Navigate to http://localhost:3000
+# KNOWN ISSUE: the frontend hardcodes the API at localhost:8001, while docker-compose maps 8000.
+# Docker is currently untested/inconsistent; use the Local Development path below.
 ```
 
 ## 📂 Project Structure
 
-*   `unified_api.py` - The master backend controller that seamlessly mounts both ML pipelines into a single FastAPI router on port `8000`.
+*   `unified_api.py` - The master backend controller that seamlessly mounts both ML pipelines into a single FastAPI router on port `8001` (local dev).
 *   `backend.Dockerfile` - A unified CUDA-enabled Ubuntu environment that natively resolves PyTorch and TensorFlow dependency clashes.
 *   `DL_project/` - Contains the Face Recognition and Deepfake Generation logic.
 *   `FaceGuard-Digital-Forensic-System/` - Contains the temporal deepfake detection model and the unified React UI.
@@ -47,10 +49,10 @@ Following a rigorous security and performance audit, this system now features:
    ```
 2. **Start Backend:**
    ```bash
-   uvicorn unified_api:app --host 0.0.0.0 --port 8000
+   uvicorn unified_api:app --host 0.0.0.0 --port 8001
    ```
 3. **Start Frontend:**
    ```bash
    cd FaceGuard-Digital-Forensic-System/frontend
-   npm install && npm start
+   npm install && set PORT=3005 && npm start   # UI on http://localhost:3005
    ```

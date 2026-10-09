@@ -11,3 +11,11 @@ build/
 .venv
 venv/
 env/
+
+# project data (large, regenerable) and logs
+eval_data/
+data/
+eval_results/*.log
+nohup.out
+# keep the small trained swap detector so the demo runs from a fresh clone
+!models/swapdet_adversarial.pt

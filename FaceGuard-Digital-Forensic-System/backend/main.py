@@ -6,16 +6,36 @@ import asyncio
 import tempfile
 import json
 from collections import deque
-from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+import uuid
+from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from model import load_faceguard_model, preprocess_frame
 
 app = FastAPI(title="FaceGuard API", version="3.0")
 
+# Only the local dev UI may call the API from a browser (override with ALLOWED_ORIGINS="a,b").
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3005,http://127.0.0.1:3005,http://localhost:3000,http://127.0.0.1:3000").split(",")
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+MAX_VIDEO_BYTES = 200 * 1024 * 1024
+UPLOAD_DIR = os.path.join(tempfile.gettempdir(), "faceguard_uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+UPLOADS = {}  # opaque upload id -> file path inside UPLOAD_DIR (clients never choose server paths)
+
+
+async def read_limited(file: UploadFile, max_bytes: int) -> bytes:
+    """Read an upload in chunks and reject anything over max_bytes (413) instead of buffering it all."""
+    data = bytearray()
+    while chunk := await file.read(1024 * 1024):
+        data += chunk
+        if len(data) > max_bytes:
+            raise HTTPException(status_code=413, detail=f"File too large (max {max_bytes // (1024 * 1024)} MB)")
+    return bytes(data)
+
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,7 +64,7 @@ async def health():
 @app.post("/analyze/image")
 async def analyze_image(file: UploadFile = File(...)):
     try:
-        contents = await file.read()
+        contents = await read_limited(file, MAX_IMAGE_BYTES)
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
         if img is None:
@@ -59,6 +79,8 @@ async def analyze_image(file: UploadFile = File(...)):
             "verdict":    "FAKE" if score > 0.40 else "REAL",
             "confidence": score if score > 0.40 else 1 - score,
         }
+    except HTTPException:
+        raise
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
@@ -71,6 +93,10 @@ async def analyze_video_stream(path: str):
     gets back a tmp path, then connects here to stream results.
     Sends JSON events: frame updates + final summary.
     """
+    path = UPLOADS.pop(path, None)  # `path` is the opaque id from /upload/video, never a client-chosen file path
+    if path is None or not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Unknown or expired upload id")
+
     async def event_generator():
         cap = cv2.VideoCapture(path)
         if not cap.isOpened():
@@ -179,15 +205,14 @@ async def analyze_video_stream(path: str):
 
 @app.post("/upload/video")
 async def upload_video(file: UploadFile = File(...)):
-    """Upload video, store to temp file, return the path for SSE stream."""
-    try:
-        contents = await file.read()
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-            tmp.write(contents)
-            tmp_path = tmp.name
-        return {"path": tmp_path, "size": len(contents)}
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    """Upload video into the private upload dir; returns an opaque id for the SSE stream endpoint."""
+    contents = await read_limited(file, MAX_VIDEO_BYTES)
+    upload_id = uuid.uuid4().hex
+    tmp_path = os.path.join(UPLOAD_DIR, upload_id + ".mp4")
+    with open(tmp_path, "wb") as f:
+        f.write(contents)
+    UPLOADS[upload_id] = tmp_path
+    return {"path": upload_id, "size": len(contents)}
 
 
 #  LEGACY: non-streaming video endpoint (kept for compatibility) 
@@ -195,7 +220,7 @@ async def upload_video(file: UploadFile = File(...)):
 async def analyze_video(file: UploadFile = File(...)):
     tmp_path = None
     try:
-        contents = await file.read()
+        contents = await read_limited(file, MAX_VIDEO_BYTES)
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
@@ -233,6 +258,8 @@ async def analyze_video(file: UploadFile = File(...)):
             "suspicious_frames": suspicious_frames[:8],
             "total_frames_analyzed": len(scores),
         }
+    except HTTPException:
+        raise
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
     finally:
