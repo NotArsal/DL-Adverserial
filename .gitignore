@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+node_modules/
+build/
+.env
+*.h5
+*.pt
+*.pth
+*.onnx
+.DS_Store
+.venv
+venv/
+env/
