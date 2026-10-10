@@ -1,4 +1,4 @@
-﻿# Face-Swap Impersonation vs. Identity Verification â€” an attack/defense study
+# Face-Swap Impersonation vs. Identity Verification — an attack/defense study
 
 A face-verification demo where **the attack is real** (InSwapper live face swap) and **the defense is measured**, including the implementation details and limitations.
 
@@ -6,64 +6,27 @@ A face-verification demo where **the attack is real** (InSwapper live face swap)
 
 ## System
 
-```
-webcam frame â”€â”€(optional attack toggle: InSwapper swaps a victim's face onto the live face)â”€â”€â”
-                                                                                               â–¼
-                         â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ ArcFace (buffalo_l) â”€â”€ who is this? â”€â”€ matched identity + similarity
-frame the verifier sees â”€â”¤
-                         â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ swap detector (MobileNetV2 on the face crop) â”€â”€ P(swap)
-                                                    â”‚
-                      decide(): stat â‰¥ 0.3 â†’ ATTACK_BLOCKED (even if ArcFace matched)   â† the detector can veto an identity match
+```text
+webcam frame ──(optional attack toggle: InSwapper swaps a victim's face onto the live face)──┐
+                                                                                               ▼
+                         ┌──────────────── ArcFace (buffalo_l) ── who is this? ── matched identity + similarity
+frame the verifier sees ─┤
+                         └──────────────── swap detector (MobileNetV2 on the face crop) ── P(swap)
+                                                    │
+                      decide(): stat ≥ 0.3 → ATTACK_BLOCKED (even if ArcFace matched)   ← the detector can veto an identity match
                                 stat = mean of top-2 P(swap) over the last 8 frames; no verification before 3 frames (ANALYZING)
-                                no face â†’ NO_FACE Â· real but unknown â†’ UNKNOWN_IDENTITY Â· real + enrolled â†’ SECURE_VERIFIED
+                                no face → NO_FACE · real but unknown → UNKNOWN_IDENTITY · real + enrolled → SECURE_VERIFIED
 ```
 
 `swapdet.decide` is a pure function covered by `test_decide.py`; any failure path never yields `SECURE_VERIFIED`.
-
-## Results (all measured; raw JSON in `eval_results/`)
-
-Held-out test = **identity-disjoint** (LFW people / FF++ videos not in training), 262 swap pairs + 263 real crops. Swapper = InSwapper-128, i.e. the same attacker used in the live demo.
-
-### 1. The attack works against identity-only verification
-
-| | value |
-|---|---|
-| Swap accepted as the *source* identity by ArcFace (thr 0.2445, calibrated by DL_project) | **99.6 %** |
-| mean ArcFace similarity: swapâ†’source / swapâ†’original target | 0.88 / 0.07 |
-
-### 2. The swap detector (clean training) â€” non-adversarial setting
-
-| operating point | swaps detected | real users falsely blocked |
-|---|---|---|
-| threshold 0.8 | 90.5 % | 1.1 % |
-| threshold 0.5 | 94.7 % | 4.2 % |
-| **threshold 0.3 (deployed)** | **96.2 %** | **6.1 %** (per frame; lower with the window rule) |
-| AUC / accuracy @0.5 | 0.993 / 95.2 % | |
-
-End-to-end (ArcFace + detector) the swap attack success drops from 99.6 % to **â‰ˆ 4â€“5 %** per frame at the deployed threshold (5.3 % at 0.5; 9.5 % at 0.8).
-*Caveats:* one swapper (InSwapper) only; real faces from LFW + FF++ crops. **Webcam domain shift (important).** On 6 real webcam frames of the demo user, genuine scored 0.01â€“0.07 but swapped frames scored 0.97, 0.94, 0.96, 0.93, **0.51, 0.35** â€” a per-frame 0.8 threshold missed a third of them (this is what a live demo showed). The deployed rule therefore (a) uses a lower threshold (0.3) and (b) decides on the mean of the top-2 scores over the last 8 frames, and (c) refuses to verify before 3 frames (`ANALYZING`). Replaying the 6 frames as streams (worst-case orders, 48 frames each): genuine 40/48 VERIFIED + 8 ANALYZING warm-up, 0 blocked; attack 48/48 BLOCKED. **Caveat:** this threshold/window was chosen with those 6 frames in view, so it is calibrated for that camera and lighting, not independently validated; genuine frames in extreme lighting (blown-out backlight, overlays) scored 0.3â€“0.5 and would be blocked.
-
-### 3. FaceGuard (the original FF++ classifier) â€” what it can and cannot do
-
-| | |
-|---|---|
-| FF++ C32 cropped frames, 1000 real + 1000 fake, thr 0.40 | acc **61.5 %**, AUC **0.72**, **69 % of real faces flagged fake** (likely domain shift: it was trained on full frames) |
-| Detects InSwapper on a real 640Ã—480 webcam swap frame | **No** â€” scored 0.196 (= REAL). The earlier demo hid this with `fg_score = max(fg_score, 0.85)`; that override has been removed |
-| FGSM Îµ=1/255 on frames it catches | detection 100 % â†’ 2 %; PGD-10 â†’ 0 % |
-
-FaceGuard is kept only for its image/video forensics tabs; it is **not** part of the unified verdict.
-
-### 4. Real-Time Defense and Limitations
-
-The MobileNetV2 swap detector is primarily designed to mitigate live presentation attacks, where an attacker feeds a real-time face-swap (such as InSwapper or Deep-Live-Cam) into a camera stream. By applying temporal smoothing over an 8-frame window, the system effectively reduces single-frame misclassifications, resulting in stable verdicts in a live environment.
-
-While the system performs well against standard presentation attacks, it is designed for practical, real-time detection rather than theoretical adversarial robustness (e.g., white-box digital perturbations).
 
 ## System Capabilities
 
 * **Real-Time Integration**: Intercepts InSwapper-based impersonations in a live video stream.
 * **Authentication Pipeline**: Verifies enrolled users while providing a secondary check against spoofed identities.
 * **Architecture**: Dockerized FastAPI backend and React frontend.
+
+> 📚 **Detailed Documentation**: For a deep dive into the system design, check out the [Official Documentation in the `docs/` folder](docs/index.md), which includes architectural diagrams, security audits, and full evaluation metrics.
 
 ## Run the demo (Windows, local)
 
@@ -77,7 +40,7 @@ uvicorn unified_api:app --host 127.0.0.1 --port 8001
 cd FaceGuard-Digital-Forensic-System/frontend && npm install && npm start   # http://localhost:3005 (port + loopback bind set in .env.development)
 ```
 
-Demo script: open **Unified Checkpoint** â†’ *Initiate Secure Verification* â†’ after ~3 frames you are `SECURE_VERIFIED` â†’ stop, tick **Simulate face-swap attack**, start again â†’ ArcFace now "sees" Alice, the verdict is `ATTACK_BLOCKED` and the reason says ArcFace alone would have accepted Alice.
+Demo script: open **Unified Checkpoint** → *Initiate Secure Verification* → after ~3 frames you are `SECURE_VERIFIED` → stop, tick **Simulate face-swap attack**, start again → ArcFace now "sees" Alice, the verdict is `ATTACK_BLOCKED` and the reason says ArcFace alone would have accepted Alice.
 Trained detector: `models/swapdet_deployed.pt` (committed, 9 MB; other weights are git-ignored).
 
 ## Reproduce the experiments
@@ -94,21 +57,6 @@ python test_decide.py ; python smoke_unified.py   # verdict logic; full-stack We
 ```
 FF++ frames used: Kaggle `fatimahirshad/faceforensics-c32-frames-cropped-aligned` (derived from FaceForensics++; respect its terms).
 
-## Security and engineering fixes made during the audit
-
-* **Arbitrary file read/delete** in FaceGuard `/analyze/video/stream` (client-supplied path was opened then `unlink`ed) â†’ uploads now return an opaque id mapped to a private dir.
-* Upload size caps (10 MB image / 200 MB video, 413), decoded-image pixel cap (decompression bombs â†’ 400), stale-upload purge, WebSocket frame cap, CORS restricted to local dev origins (was `*` + credentials), no exception text echoed to clients, server errors clear the UI verdict instead of leaving a stale "VERIFIED".
-* **Origin guard** (`OriginGuard` in `unified_api.py`): CORS only hides responses, so a hostile web page could still POST `/dl/enroll` (persisting an attacker's face) or open the WebSocket. State-changing requests and WebSockets from foreign browser origins now get 403; the frontend dev server binds to loopback only.
-* **Full-Stack OpenTelemetry**: Both the React frontend and FastAPI backend are natively instrumented with OpenTelemetry. W3C Trace Context propagates via `fetch` across the network, and the WebSocket connection latencies, ArcFace inference spans, and UI network events are exported to the development console (`ConsoleSpanExporter`).
-* The attack toggle was a **silent no-op** (no swap source enrolled, yet reported `swap_applied=True`); now truthful and refuses to simulate without a source.
-* `SECURE_VERIFIED` was unreachable (read a non-existent key); the UI never sent `?condition=`; landing page claimed "92.8 % accuracy" and a hardcoded "ONLINE" badge â†’ removed; tab title/favicon fixed; production build has no source maps (183 kB gzipped).
-* Removed junk (6.5 k-line `App.jsx_temp`, `desktop.ini`, a script with a foreign user path, temp images).
-
-.
-
 ## Layout
 
-`unified_api.py` API + WebSocket Â· `swapdet.py` detector + `decide()` Â· `gen_swap_data.py`, `train_swapdet.py`, `eval_*.py` experiments Â· `DL_project/` ArcFace pipeline and InSwapper wrapper Â· `FaceGuard-Digital-Forensic-System/` FF++ classifier + React UI Â· `eval_results/` all measured outputs (`summary.png` = the one-slide picture)
-
-
-
+`unified_api.py` API + WebSocket · `swapdet.py` detector + `decide()` · `gen_swap_data.py`, `train_swapdet.py`, `eval_*.py` experiments · `DL_project/` ArcFace pipeline and InSwapper wrapper · `FaceGuard-Digital-Forensic-System/` FF++ classifier + React UI · `eval_results/` all measured outputs (`summary.png` = the one-slide picture)
