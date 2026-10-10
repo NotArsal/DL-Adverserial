@@ -88,7 +88,7 @@ python make_demo_identity.py                       # exports the victim identity
 python enroll_user.py YourName --webcam            # enroll YOU (6 snapshots, your demo lighting); does not change the swap source
 uvicorn unified_api:app --host 127.0.0.1 --port 8001
 # second terminal:
-cd FaceGuard-Digital-Forensic-System/frontend && npm install && set PORT=3005 && npm start    # http://localhost:3005
+cd FaceGuard-Digital-Forensic-System/frontend && npm install && npm start   # http://localhost:3005 (port + loopback bind set in .env.development)
 ```
 
 Demo script: open **Unified Checkpoint** → *Initiate Secure Verification* → after ~3 frames you are `SECURE_VERIFIED` → stop, tick **Simulate face-swap attack**, start again → ArcFace now "sees" Alice, the verdict is `ATTACK_BLOCKED` and the reason says ArcFace alone would have accepted Alice.
@@ -111,7 +111,8 @@ FF++ frames used: Kaggle `fatimahirshad/faceforensics-c32-frames-cropped-aligned
 ## Security and engineering fixes made during the audit
 
 * **Arbitrary file read/delete** in FaceGuard `/analyze/video/stream` (client-supplied path was opened then `unlink`ed) → uploads now return an opaque id mapped to a private dir.
-* Upload size caps (10 MB image / 200 MB video, 413), WebSocket frame cap, CORS restricted to local dev origins (was `*` + credentials), server errors clear the UI verdict instead of leaving a stale "VERIFIED".
+* Upload size caps (10 MB image / 200 MB video, 413), decoded-image pixel cap (decompression bombs → 400), stale-upload purge, WebSocket frame cap, CORS restricted to local dev origins (was `*` + credentials), no exception text echoed to clients, server errors clear the UI verdict instead of leaving a stale "VERIFIED".
+* **Origin guard** (`OriginGuard` in `unified_api.py`): CORS only hides responses, so a hostile web page could still POST `/dl/enroll` (persisting an attacker's face) or open the WebSocket. State-changing requests and WebSockets from foreign browser origins now get 403; the frontend dev server binds to loopback only.
 * The attack toggle was a **silent no-op** (no swap source enrolled, yet reported `swap_applied=True`); now truthful and refuses to simulate without a source.
 * `SECURE_VERIFIED` was unreachable (read a non-existent key); the UI never sent `?condition=`; landing page claimed "92.8 % accuracy" and a hardcoded "ONLINE" badge → removed; tab title/favicon fixed; production build has no source maps (183 kB gzipped).
 * Removed junk (6.5 k-line `App.jsx_temp`, `desktop.ini`, a script with a foreign user path, temp images).

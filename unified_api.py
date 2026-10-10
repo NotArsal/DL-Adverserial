@@ -1,5 +1,6 @@
 import sys
 import os
+os.environ.setdefault("OPENCV_IO_MAX_IMAGE_PIXELS", str(25_000_000))  # decompression-bomb guard, must precede the first cv2 import
 import torch  # noqa: F401  must load before onnxruntime so it finds torch's CUDA 12 / cuDNN 9 DLLs
 
 # Paths setup
@@ -27,6 +28,7 @@ except Exception:
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import asyncio
 from collections import deque
@@ -78,6 +80,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+class OriginGuard:
+    """Reject browser requests from foreign origins that change state or open a WebSocket. CORS only hides *responses*; a
+    hostile page could still POST /dl/enroll (persisting an attacker's face) or open the WebSocket. Clients that send no
+    Origin header (curl, tests, server-side tools) are unaffected."""
+    def __init__(self, app, allowed):
+        self.app, self.allowed = app, set(allowed)
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            origin = dict(scope["headers"]).get(b"origin")
+            unsafe = scope["type"] == "websocket" or scope["method"] not in ("GET", "HEAD", "OPTIONS")
+            if origin and unsafe and origin.decode() not in self.allowed:
+                if scope["type"] == "websocket":
+                    await send({"type": "websocket.close", "code": 1008})
+                else:
+                    await JSONResponse({"error": "origin not allowed"}, status_code=403)(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+app.add_middleware(OriginGuard, allowed=fg_main.ALLOWED_ORIGINS)
 
 # Mount the sub-applications
 app.mount("/faceguard", fg_main.app)

@@ -261,7 +261,7 @@ export default function DeepfakeGenerator() {
             <h3>Methodology</h3>
             <ul>
               <li><strong>Model A:</strong> Identity recognition gate (ArcFace)</li>
-              <li><strong>C-Adv:</strong> Identity-aware anti-impersonation model</li>
+              <li><strong>C-Adv (legacy):</strong> placeholder output in this tab; the real detector is on the Unified Checkpoint page</li>
               <li><strong>Native InSwapper:</strong> Live face-swap test source (evaluated upstream)</li>
               <li>Final decision is produced purely by the server backend.</li>
               <li>When Face Swap is ON, the <strong>exact post-swap frame</strong> is displayed and analyzed.</li>
@@ -336,6 +336,7 @@ export default function DeepfakeGenerator() {
                         <small>I: {inferenceResult.ema_c_probs[2]?.toFixed(3)}</small>
                       </div>
                     )}
+                    <p style={{ opacity: 0.7, fontSize: '0.75rem', marginTop: '0.4rem' }}>Legacy output: these values are fixed by the identity decision (G = 1 when ArcFace accepts), not a trained classifier. The real swap detector is on the Unified Checkpoint page.</p>
                   </div>
                   
                   <div className="detail-card">

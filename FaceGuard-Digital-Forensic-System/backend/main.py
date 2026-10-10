@@ -6,12 +6,15 @@ import asyncio
 import tempfile
 import json
 from collections import deque
+import logging
+import time
 import uuid
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from model import load_faceguard_model, preprocess_frame
 
+logger = logging.getLogger("faceguard")
 app = FastAPI(title="FaceGuard API", version="3.0")
 
 # Only the local dev UI may call the API from a browser (override with ALLOWED_ORIGINS="a,b").
@@ -81,8 +84,11 @@ async def analyze_image(file: UploadFile = File(...)):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except cv2.error:  # oversized / corrupt media: client error, and never echo OpenCV internals
+        return JSONResponse(status_code=400, content={"error": "Invalid or too large media file"})
+    except Exception:
+        logger.exception("request failed")
+        return JSONResponse(status_code=500, content={"error": "Internal error"})
 
 
 #  VIDEO FORENSICS  SSE STREAMING 
@@ -206,6 +212,12 @@ async def analyze_video_stream(path: str):
 @app.post("/upload/video")
 async def upload_video(file: UploadFile = File(...)):
     """Upload video into the private upload dir; returns an opaque id for the SSE stream endpoint."""
+    now = time.time()  # drop uploads nobody streamed within an hour (otherwise they accumulate on disk)
+    for uid, path in list(UPLOADS.items()):
+        if not os.path.exists(path) or now - os.path.getmtime(path) > 3600:
+            UPLOADS.pop(uid, None)
+            try: os.unlink(path)
+            except OSError: pass
     contents = await read_limited(file, MAX_VIDEO_BYTES)
     upload_id = uuid.uuid4().hex
     tmp_path = os.path.join(UPLOAD_DIR, upload_id + ".mp4")
@@ -260,8 +272,11 @@ async def analyze_video(file: UploadFile = File(...)):
         }
     except HTTPException:
         raise
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except cv2.error:  # oversized / corrupt media: client error, and never echo OpenCV internals
+        return JSONResponse(status_code=400, content={"error": "Invalid or too large media file"})
+    except Exception:
+        logger.exception("request failed")
+        return JSONResponse(status_code=500, content={"error": "Internal error"})
     finally:
         if tmp_path and os.path.exists(tmp_path):
             try:
