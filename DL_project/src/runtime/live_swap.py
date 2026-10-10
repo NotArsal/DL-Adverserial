@@ -11,7 +11,7 @@ class NativeInSwapper:
             self.swapper = None
             self.is_mock = True
         else:
-            self.swapper = insightface.model_zoo.get_model(model_path, download=False, download_zip=False)
+            self.swapper = insightface.model_zoo.get_model(model_path, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False, download_zip=False)
         self.source_face = None
 
     def set_source_face(self, source_face):

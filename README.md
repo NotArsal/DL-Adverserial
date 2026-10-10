@@ -75,7 +75,7 @@ White-box attacker perturbs the swapped crop (L∞), 262 swaps, detection at 0.5
 * Detector trained on InSwapper only; no cross-swapper evaluation. Test set small (n=262).
 * Model selection used the same test split for 5 candidate models (small selection bias).
 * `DL_project/experiments/model_c_adv` ("Model C") results predate this work, evaluate a model that is **not** in the live path, and overclaim — a correction note is at the top of its summary.
-* Docker files were made consistent (ports 8001/3005, `.dockerignore`) but **not built or tested**. `onnxruntime-gpu` is pinned in `requirements.txt` while the dev machine ran CPU onnxruntime.
+* Docker files were made consistent (ports 8001/3005, `.dockerignore`) but **not built or tested**; the base image is CUDA 12.1 + cuDNN 8 while `onnxruntime-gpu` 1.20 needs cuDNN 9 (torch's wheels bundle it, and `unified_api` imports torch first), so verify before relying on it.
 
 ## Run the demo (Windows, local)
 

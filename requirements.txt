@@ -15,7 +15,7 @@ tensorflow==2.15.0
 torch==2.5.1+cu121
 torchvision==0.20.1+cu121
 onnx==1.15.0
-onnxruntime-gpu==1.16.3
+onnxruntime-gpu==1.20.0   # CUDA 12 + cuDNN 9 build (matches torch cu121); 1.16.x is CUDA 11 and silently fell back to CPU (~0.3 FPS swap)
 
 # Facial Recognition / Computer Vision
 insightface==0.7.3

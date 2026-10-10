@@ -1,5 +1,6 @@
 import sys
 import os
+import torch  # noqa: F401  must load before onnxruntime so it finds torch's CUDA 12 / cuDNN 9 DLLs
 
 # Paths setup
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
