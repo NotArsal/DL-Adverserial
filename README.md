@@ -1,8 +1,8 @@
 ﻿# Face-Swap Impersonation vs. Identity Verification â€” an attack/defense study
 
-A face-verification demo where **the attack is real** (InSwapper live face swap) and **the defense is measured**, demonstrating a robust, enterprise-grade deepfake interception pipeline.
+A face-verification demo where **the attack is real** (InSwapper live face swap) and **the defense is measured**, including the implementation details and limitations.
 
-**One-paragraph summary.** Traditional identity matching is highly vulnerable to live face-swap impersonations. To secure the authentication pipeline, we engineered a custom deepfake swap detector (MobileNetV2) that achieves **~96% detection accuracy** on identity-disjoint test data. Seamlessly integrated into the live processing pipeline with temporal smoothing, our model successfully intercepts and vetoes fraudulent identity matches in real-time, delivering a robust and highly accurate defense against state-of-the-art synthetic faces.
+**One-paragraph summary.** Traditional identity matching systems are vulnerable to live face-swap impersonations. To address this, we developed a custom swap detector (MobileNetV2) that achieves **~96% detection accuracy** on identity-disjoint test data. Integrated into the live processing pipeline with temporal smoothing, the model successfully intercepts and vetoes fraudulent identity matches. This provides an effective defense against real-time synthetic face presentations.
 
 ## System
 
@@ -53,15 +53,17 @@ End-to-end (ArcFace + detector) the swap attack success drops from 99.6 % to **�
 
 FaceGuard is kept only for its image/video forensics tabs; it is **not** part of the unified verdict.
 
-### 4. Real-Time Deepfake Interception
+### 4. Real-Time Defense and Limitations
 
-Our custom MobileNetV2 swap detector provides high-confidence defense against state-of-the-art live presentation attacks. The primary threat model for web-based authentication is an attacker feeding a live, real-time face-swap (such as InSwapper or Deep-Live-Cam) into the camera stream. Against this threat, the model excels. By leveraging temporal smoothing over an 8-frame window, the system naturally filters out single-frame misclassifications, ensuring stable, highly accurate verdicts in a live environment.
+The MobileNetV2 swap detector is primarily designed to mitigate live presentation attacks, where an attacker feeds a real-time face-swap (such as InSwapper or Deep-Live-Cam) into a camera stream. By applying temporal smoothing over an 8-frame window, the system effectively reduces single-frame misclassifications, resulting in stable verdicts in a live environment.
 
-## System Capabilities and Extensibility
+While the system performs well against standard presentation attacks, it is designed for practical, real-time detection rather than theoretical adversarial robustness (e.g., white-box digital perturbations).
 
-* **Real-Time Defense**: Actively intercepts and halts unauthorized InSwapper-based impersonations in a live video stream.
-* **Secure Verification**: Successfully authenticates legitimate enrolled users while blocking spoofed identities.
-* **Cross-Platform**: Fully dockerized backend and React frontend.
+## System Capabilities
+
+* **Real-Time Integration**: Intercepts InSwapper-based impersonations in a live video stream.
+* **Authentication Pipeline**: Verifies enrolled users while providing a secondary check against spoofed identities.
+* **Architecture**: Dockerized FastAPI backend and React frontend.
 
 ## Run the demo (Windows, local)
 
@@ -107,5 +109,6 @@ FF++ frames used: Kaggle `fatimahirshad/faceforensics-c32-frames-cropped-aligned
 ## Layout
 
 `unified_api.py` API + WebSocket Â· `swapdet.py` detector + `decide()` Â· `gen_swap_data.py`, `train_swapdet.py`, `eval_*.py` experiments Â· `DL_project/` ArcFace pipeline and InSwapper wrapper Â· `FaceGuard-Digital-Forensic-System/` FF++ classifier + React UI Â· `eval_results/` all measured outputs (`summary.png` = the one-slide picture)
+
 
 
