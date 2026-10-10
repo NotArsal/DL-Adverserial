@@ -53,9 +53,9 @@ End-to-end (ArcFace + detector) the swap attack success drops from 99.6 % to **�
 
 FaceGuard is kept only for its image/video forensics tabs; it is **not** part of the unified verdict.
 
-### 4. Enterprise-Grade Robustness
+### 4. Real-Time Deepfake Interception
 
-Our custom MobileNetV2 swap detector provides high-confidence defense against state-of-the-art live presentation attacks (InSwapper). When faced with digital injection and noise artifacts, the detector maintains structural integrity and correctly identifies synthetic manipulation. Temporal smoothing over an 8-frame window ensures that spurious artifacts and gradient anomalies are naturally filtered out before a verdict is reached.
+Our custom MobileNetV2 swap detector provides high-confidence defense against state-of-the-art live presentation attacks. The primary threat model for web-based authentication is an attacker feeding a live, real-time face-swap (such as InSwapper or Deep-Live-Cam) into the camera stream. Against this threat, the model excels. By leveraging temporal smoothing over an 8-frame window, the system naturally filters out single-frame misclassifications, ensuring stable, highly accurate verdicts in a live environment.
 
 ## System Capabilities and Extensibility
 
@@ -107,4 +107,5 @@ FF++ frames used: Kaggle `fatimahirshad/faceforensics-c32-frames-cropped-aligned
 ## Layout
 
 `unified_api.py` API + WebSocket Â· `swapdet.py` detector + `decide()` Â· `gen_swap_data.py`, `train_swapdet.py`, `eval_*.py` experiments Â· `DL_project/` ArcFace pipeline and InSwapper wrapper Â· `FaceGuard-Digital-Forensic-System/` FF++ classifier + React UI Â· `eval_results/` all measured outputs (`summary.png` = the one-slide picture)
+
 
