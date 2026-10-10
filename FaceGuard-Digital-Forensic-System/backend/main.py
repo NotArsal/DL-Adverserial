@@ -293,6 +293,9 @@ async def webcam_ws(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            if len(data) > MAX_IMAGE_BYTES * 2:  # base64 overhead margin
+                await websocket.close(code=1009)
+                break
             if "," in data:
                 data = data.split(",")[1]
             img_bytes = base64.b64decode(data)
