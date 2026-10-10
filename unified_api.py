@@ -68,9 +68,18 @@ async def unified_lifespan(app: FastAPI):
         yield
 
 from fastapi.middleware.cors import CORSMiddleware
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+tracer_provider = TracerProvider()
+tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
 
 # Create the master API
-app = FastAPI(title="Unified API (FaceGuard + DL_project)", lifespan=unified_lifespan)
+app = FastAPI(
+    title="Unified API (FaceGuard + DL_project)", 
+    lifespan=unified_lifespan,
+    telemetry={"tracer_provider": tracer_provider}
+)
 
 # Add CORS middleware to allow the React frontend to communicate with the root endpoints
 app.add_middleware(
