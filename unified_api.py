@@ -141,6 +141,10 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
             response = {
                 "frame_id": frame_id,
                 "processed_frame": processed_b64,
+                "face_detected": bool(dl_result.get("face_detected")),
+                "identity_threshold": dl_server.pipeline_instance.identity_pipeline.match_threshold,
+                "swap_threshold": SWAP_THRESHOLD,
+                "latency_ms": round(dl_result.get("latency_total", 0.0) * 1000),
                 "condition": condition,
                 "swap_probability": p_swap,
                 "identity": identity if id_ok else None,

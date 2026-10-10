@@ -79,7 +79,8 @@ export default function LandingPage({ onEnter, theme, setTheme, apiOnline }) {
         <div className="landing-hero">
           <div className="landing-badge">
             <span className="landing-badge-dot" />
-            {apiOnline === null ? 'CONNECTING...' : apiOnline ? 'BACKEND ONLINE' : 'BACKEND OFFLINE - START uvicorn ON :8001'}          </div>
+            {apiOnline === null ? 'CONNECTING...' : apiOnline ? 'BACKEND ONLINE' : 'BACKEND OFFLINE - START uvicorn ON :8001'}
+          </div>
           <h1 className="landing-title">
             Attack it.<br />
             <span className="landing-title-accent">Then defend it.</span>
