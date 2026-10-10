@@ -28,6 +28,16 @@ function Meter({ value, threshold, tone }) {
 const Row = ({ k, children }) => (
   <div className="uc-row"><span className="uc-k">{k}</span><span className="uc-v">{children}</span></div>
 );
+// G / D / I class mix derived from the two real signals (NOT a trained 3-class head).
+//  I: swap score rescaled piecewise-linearly so the block threshold maps to 0.5 (I >= 0.5 <=> blocked).
+//  G / D: the remaining mass split by a soft ArcFace accept test (sigmoid of similarity - threshold).
+function classMix(info) {
+  if (!info || info.swap_probability == null) return null;
+  const p = info.swap_probability, t = info.swap_threshold;
+  const I = p < t ? 0.5 * p / t : 0.5 + 0.5 * (p - t) / (1 - t);
+  const known = 1 / (1 + Math.exp(-(info.identity_similarity - info.identity_threshold) / 0.05));
+  return { G: (1 - I) * known, D: (1 - I) * (1 - known), I };
+}
 const fmt = (x, d = 3) => (x == null || Number.isNaN(x) ? 'N/A' : Number(x).toFixed(d));
 
 export default function UnifiedCheckpoint() {
@@ -99,6 +109,8 @@ export default function UnifiedCheckpoint() {
   const idSim = info ? info.identity_similarity : null;
   const waiting = !info;
   const swapBlocked = swapP != null && info && swapP >= info.swap_threshold;
+  const mix = classMix(info);
+  const mixClass = mix ? (mix.I >= 0.5 ? 'IMPERSONATION' : mix.G >= mix.D ? 'GENUINE' : 'DIFFERENT PERSON') : null;
 
   return (
     <div className="uc-page">
@@ -170,6 +182,13 @@ export default function UnifiedCheckpoint() {
             <Row k="Block threshold">{info ? `${(info.swap_threshold * 100).toFixed(0)}%` : 'N/A'}</Row>
             <Row k="Class"><b className={swapP == null ? '' : swapBlocked ? 'uc-t-bad' : 'uc-t-ok'}>{swapP == null ? 'N/A' : swapBlocked ? 'SYNTHETIC' : 'REAL'}</b></Row>
             <Meter value={swapP} threshold={info && info.swap_threshold} tone={swapBlocked ? 'bad' : 'ok'} />
+
+            <h3>Anti-impersonation class (derived)</h3>
+            <Row k="Class"><b className={mixClass === 'GENUINE' ? 'uc-t-ok' : mixClass ? 'uc-t-bad' : ''}>{mixClass ?? 'N/A'}</b></Row>
+            <Row k="G (genuine)">{fmt(mix && mix.G)}</Row>
+            <Row k="D (different person)">{fmt(mix && mix.D)}</Row>
+            <Row k="I (impersonation)">{fmt(mix && mix.I)}</Row>
+            <p className="uc-note">Derived from ArcFace similarity and the swap score; not a separate trained model. I &ge; 0.5 means the attempt is blocked.</p>
 
             <h3>Pipeline</h3>
             <Row k="Latency">{info ? `${info.latency_ms} ms` : 'N/A'}</Row>
