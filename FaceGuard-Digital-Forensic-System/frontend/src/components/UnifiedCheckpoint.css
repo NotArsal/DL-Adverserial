@@ -53,6 +53,6 @@
 .uc-t-ok { color: #00e676; } .uc-t-bad { color: #ff4f82; }
 
 .uc-meter { position: relative; height: 8px; background: rgba(255,255,255,.09); border-radius: 4px; margin: .35rem 0 .2rem; }
-.uc-meter-fill { height: 100%; border-radius: 4px; transition: width .25s; }
+.uc-meter-fill { width: 100%; height: 100%; border-radius: 4px; transform-origin: left center; transition: transform .25s; } /* scaleX, not width: no layout per update */
 .uc-meter-fill.uc-ok { background: #00e676; } .uc-meter-fill.uc-bad { background: #ff2d6b; } .uc-meter-fill.uc-warn { background: #ffaa00; }
 .uc-meter-thr { position: absolute; top: -3px; bottom: -3px; width: 2px; background: #fff; opacity: .85; }

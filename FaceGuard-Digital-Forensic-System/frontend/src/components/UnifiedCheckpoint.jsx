@@ -18,7 +18,7 @@ function Meter({ value, threshold, tone }) {
   const pct = (v) => `${Math.max(0, Math.min(1, v)) * 100}%`;
   return (
     <div className="uc-meter" role="meter" aria-valuemin={0} aria-valuemax={1} aria-valuenow={value ?? 0}>
-      <div className={`uc-meter-fill uc-${tone}`} style={{ width: value == null ? '0%' : pct(value) }} />
+      <div className={`uc-meter-fill uc-${tone}`} style={{ transform: `scaleX(${value == null ? 0 : Math.max(0, Math.min(1, value))})` }} />
       {threshold != null && <div className="uc-meter-thr" style={{ left: pct(threshold) }} title={`threshold ${threshold.toFixed(2)}`} />}
     </div>
   );
