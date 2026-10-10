@@ -28,3 +28,7 @@ scikit-learn
 matplotlib
 pyyaml
 pytest
+
+# Observability (OpenTelemetry Native)
+opentelemetry-api
+opentelemetry-sdk

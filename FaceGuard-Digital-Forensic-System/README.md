@@ -237,6 +237,22 @@ Push to `main` → Vercel auto-deploys frontend. Render auto-deploys backend on 
 
 ---
 
+## ✦ Security & Observability
+
+During the final audit phase, several enterprise-grade hardening and observability features were added:
+
+1. **Native OpenTelemetry Instrumentation**: 
+   - Backend (`unified_api.py`) natively exports spans via `BatchSpanProcessor` to the console.
+   - Frontend (`FrontendTracer.js`) uses `@opentelemetry/auto-instrumentations-web` to trace UI events, component loads, and `fetch` requests. 
+   - W3C Trace Context headers (Baggage) propagate across CORS boundaries for end-to-end distributed tracing.
+2. **WebSocket & CORS Hardening**: 
+   - `OriginGuard` implemented in FastAPI to strictly block Cross-Site WebSocket Hijacking (CSWSH) and state-changing CSRF attempts from malicious origins.
+   - Memory-exhaustion bounds placed on WebSocket frames to prevent DoS.
+3. **Path Traversal Mitigation**: 
+   - Video upload processing uses opaque UUIDs instead of trusting client-provided filenames, nullifying arbitrary file read/delete vulnerabilities.
+
+---
+
 ## ✦ Author
 
 **Hiba V S** · IES23CD008 · CSE Data Science · IES College of Engineering, Thrissur
