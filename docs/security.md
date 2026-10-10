@@ -1,29 +1,54 @@
-# Security and Observability
+# Security and observability
 
-As a digital forensic tool, the system requires strict security boundaries and deep observability. During the final audit phase, several enterprise-grade hardening features were implemented.
+This page covers the **API** and its hardening, and then the model-level threat model. The API is built for local demo use, not for exposure to a network.
 
-## 1. Security Hardening
+> [!IMPORTANT]
+> The API has **no authentication or authorization**. Both Docker ports are published on `127.0.0.1` only for that reason. Do not expose it publicly.
 
-### OriginGuard (CORS & CSWSH Protection)
-By default, WebSocket connections do not respect standard CORS headers, leaving them vulnerable to Cross-Site WebSocket Hijacking (CSWSH). To prevent this, the backend implements `OriginGuard`, a strict middleware that validates the `Origin` header on all incoming WebSocket upgrades and state-changing REST requests. Requests from unauthorized domains are immediately rejected with a 403 Forbidden status.
+## API hardening
 
-### Resource Exhaustion Prevention
-- **WebSocket Frame Limits**: Memory bounds are placed on incoming WebSocket frames to prevent Denial of Service (DoS) attacks via oversized payloads.
-- **Decompression Bomb Mitigation**: Image uploads enforce strict pixel-count caps (e.g., maximum 400x400 for analysis) to prevent memory exhaustion during decoding.
-- **Upload Size Caps**: Hard limits are enforced on static uploads (10 MB for images, 200 MB for videos).
+What the code does today:
 
-### Path Traversal Mitigation
-In earlier versions, the video streaming endpoint accepted raw, client-provided file paths, which could lead to arbitrary file reads or deletions (`unlink`). The modern architecture replaces this with an opaque session ID mapping. All uploaded files are stored in a sandboxed, backend-managed directory, completely isolated from user input.
+| Control | Where | Behaviour |
+|---|---|---|
+| Origin check (`OriginGuard`) | `unified_api.py` | For WebSocket upgrades and non-`GET/HEAD/OPTIONS` requests that carry an `Origin` header not in `ALLOWED_ORIGINS`: REST gets `403`, WebSockets are closed with code `1008`. Stops a hostile web page from opening the socket or POSTing to `/dl/enroll` from a victim's browser. |
+| CORS allow-list | `unified_api.py`, `backend/main.py` | Same `ALLOWED_ORIGINS`: `localhost` and `127.0.0.1` on ports 3000 and 3005 by default; override with the `ALLOWED_ORIGINS` environment variable. |
+| Frame size cap | `unified_api.py` | Frames over 2 MB on `/ws/unified-verify` are dropped. |
+| Decode pixel cap | `unified_api.py` | `OPENCV_IO_MAX_IMAGE_PIXELS` set to 25,000,000 before OpenCV loads, to refuse decompression bombs. |
+| Upload caps | `backend/main.py` | 10 MB images, 200 MB videos, read in a bounded way. |
+| Opaque upload ids | `backend/main.py` | `/upload/video` stores the file under a random id; `/analyze/video/stream` accepts only that id and pops it, never a client path. Uploads older than an hour are deleted lazily, on the next upload. |
+| Fail closed | `unified_api.py` | On an internal error the socket gets an error message instead of a stale "verified". |
 
-## 2. Observability (OpenTelemetry)
+### Known gaps
 
-To ensure the system is diagnosable in production, both the frontend and backend are natively instrumented with **OpenTelemetry**.
+- **Requests without an `Origin` header are not checked.** `curl` and server-side clients pass straight through. `OriginGuard` protects against browsers, not against a direct client. Without authentication, anything that can reach the port can use the API.
+- **No rate limiting** and no limit on concurrent WebSockets.
+- **Decode cap is global, not per-endpoint.** The 25 MP limit is an environment setting; there is no explicit resolution check in the verdict handler.
+- **A shared lock serialises the identity/swap step** (`pipeline_lock`). One slow client delays others.
+- **Enrollment is open.** Anyone who can reach `/dl/enroll` can enroll a face as an identity.
 
-### Distributed Tracing
-W3C Trace Context headers (Baggage) propagate across CORS boundaries. This allows a single trace to track a user's click in the React frontend, the resulting `fetch` request over the network, and the corresponding inference time inside the Python backend.
+## Observability
 
-### Backend Telemetry
-FastAPI natively exports spans via `BatchSpanProcessor`. Every REST endpoint and WebSocket connection automatically logs span timings, making it trivial to identify bottlenecks in the neural network inference pipeline.
+Both ends are instrumented with OpenTelemetry, but **only to the console**.
 
-### Frontend Telemetry
-The React application uses `@opentelemetry/auto-instrumentations-web` to trace page loads, user interactions, and XMLHttpRequests/fetch calls, ensuring that client-side latency is measured accurately.
+| Side | Setup | Output |
+|---|---|---|
+| Backend | `TracerProvider` + `BatchSpanProcessor(ConsoleSpanExporter)`, passed to FastAPI via its `telemetry=` argument | Spans printed to the server's stdout |
+| Frontend | `WebTracerProvider` + `SimpleSpanProcessor(ConsoleSpanExporter)` with web auto-instrumentations; W3C trace-context headers are added to all fetches (`propagateTraceHeaderCorsUrls: /.*/`) | Spans printed to the browser console |
+
+No collector, exporter or dashboard is configured, so traces are not stored or correlated across the two sides unless you read both consoles. Adding an OTLP exporter is the missing step.
+
+## Threat model for the detector
+
+| Attack | Defended? | Evidence |
+|---|---|---|
+| Live InSwapper swap shown to a camera, no knowledge of the detector | Largely, on the test set | 96.2% caught at the deployed threshold ([Evaluation](evaluation.md)) |
+| Other swap tools (Deep-Live-Cam, SimSwap, diffusion-based) | **Unknown** | The detector saw only InSwapper output. Untested. |
+| White-box perturbation of the face crop | **No** | PGD-10 at ε = 1/255 drops detection to 0% |
+| Replay of a recorded genuine video, or a printed photo | **No** | No liveness check exists |
+| Poisoned enrollment | **No** | Enrollment is unauthenticated |
+| Attack on ArcFace itself | **Not evaluated** | The white-box tests only attack the detector |
+
+## Reporting problems
+
+This is coursework. If you find a security issue, open an issue on the repository.

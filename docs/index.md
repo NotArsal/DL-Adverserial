@@ -1,37 +1,29 @@
-# FaceGuard Documentation
+# Documentation
 
-Welcome to the official documentation for the **Face-Swap Impersonation vs. Identity Verification** project. 
+This project asks one question: **can a live face-swap fool a face-verification system, and what does it take to stop it?**
 
-This repository explores the vulnerability of standard facial recognition systems (ArcFace) to live face-swap attacks (e.g., InSwapper, Deep-Live-Cam), and demonstrates a robust, real-time defense mechanism using a custom MobileNetV2 swap detector.
+It is a university deep-learning project. The documentation describes what was built, what was measured, and where it falls short. Numbers come from the files in `eval_results/` and from scripts in this repository.
 
-## Table of Contents
+## Contents
 
-1. [System Architecture](./architecture.md)
-   * Explores the high-level flow, the FastAPI backend, the React frontend, and how the ArcFace and MobileNetV2 models integrate.
-2. [Security and Observability](./security.md)
-   * Details the enterprise-grade hardening (OriginGuard, CSWSH protection) and the native OpenTelemetry tracing pipeline.
-3. [Evaluation & Limitations](./evaluation.md)
-   * Provides an academically honest breakdown of the system's performance, its threat model (Presentation Attacks), and its known limitations.
+| Document | What it covers |
+|---|---|
+| [Getting started](getting-started.md) | Install, enroll a user, run the API and UI, run with Docker, run the tests |
+| [Architecture](architecture.md) | Components, request flow, verdict logic, repository layout |
+| [Evaluation](evaluation.md) | Datasets, metrics, attack results, how to reproduce them |
+| [Security and observability](security.md) | Request hardening in the API, telemetry, what is *not* protected |
+| [Limitations](limitations.md) | What the system does not do, and open problems |
 
-## Quick Start Reference
+## The result in one paragraph
 
-To run the local demonstration, ensure you have Python 3.10+ and Node.js 18+ installed.
+ArcFace alone accepts 99.6% of InSwapper face-swaps as the impersonated identity. Adding a MobileNetV2 swap detector that can veto an identity match cuts that to about 4% on a held-out test set, with 6.1% of real faces flagged per frame. That holds only against swaps that were not crafted against the detector. A white-box attacker with an L∞ budget of 1/255 drives detection to 0%, and the adversarially trained variants we tried were not usable (62–67% of real faces blocked). Details and sources are in [Evaluation](evaluation.md).
 
-```bash
-# 1. Install dependencies
-pip install -r requirements.txt
+## Status of the pieces
 
-# 2. Enroll a demo identity
-python make_demo_identity.py
-python enroll_user.py YourName --webcam
-
-# 3. Start the FastAPI backend
-uvicorn unified_api:app --host 127.0.0.1 --port 8001
-
-# 4. Start the React frontend (in a new terminal)
-cd FaceGuard-Digital-Forensic-System/frontend
-npm install
-npm start
-```
-
-For more details on the training pipelines and data generation, please refer to the experiments located in the `DL_project/` directory.
+| Piece | Status |
+|---|---|
+| Swap detector (`swapdet.py`, `models/swapdet_deployed.pt`) | In the live verdict path. Trained on one swapper (InSwapper). |
+| ArcFace identity matching (`DL_project/src/`) | In the live verdict path. |
+| Verdict logic (`swapdet.decide`) | In the live verdict path. Covered by `test_decide.py`. |
+| FaceGuard Keras model (`FaceGuard-Digital-Forensic-System/`) | Bundled earlier project. Serves the legacy image/video/webcam tabs. **Not part of the swap verdict.** |
+| `DL_project/experiments/` and `DL_project/docs/` | Historical research artifacts from earlier phases. Not re-verified here. |
