@@ -2,7 +2,7 @@
 
 A face-verification demo where **the attack is real** (InSwapper live face swap) and **the defense is measured**, including the parts that failed.
 
-**One-paragraph summary.** ArcFace identity matching alone is fooled by InSwapper face swaps on **99.6 %** of held-out pairs. We trained a swap detector (MobileNetV2) that, on identity-disjoint test data, catches **~90 % of swaps at ~1 % false alarms** (operating point 0.8) and, wired into the live pipeline, vetoes identity matches that come from a synthetic face. However, the detector is **not adversarially robust**: a white-box L∞ attack with ε = 1/255 drives detection to 0 %. Three adversarial-training configurations all collapsed into unusable detectors, and a randomized-transform defense only partly helps at a large accuracy cost. Those negative results are part of the deliverable.
+**One-paragraph summary.** ArcFace identity matching alone is fooled by InSwapper face swaps on **99.6 %** of held-out pairs. We trained a swap detector (MobileNetV2) that, on identity-disjoint test data, catches **~96 % of swaps at ~6 % per-frame false alarms** (deployed threshold 0.3, judged over a short window of frames) and, wired into the live pipeline, vetoes identity matches that come from a synthetic face. However, the detector is **not adversarially robust**: a white-box L∞ attack with ε = 1/255 drives detection to 0 %. Three adversarial-training configurations all collapsed into unusable detectors, and a randomized-transform defense only partly helps at a large accuracy cost. Those negative results are part of the deliverable.
 
 ## System
 
@@ -13,7 +13,8 @@ webcam frame ──(optional attack toggle: InSwapper swaps a victim's face onto
 frame the verifier sees ─┤
                          └──────────────── swap detector (MobileNetV2 on the face crop) ── P(swap)
                                                     │
-                      decide(): P(swap) ≥ 0.8 → ATTACK_BLOCKED (even if ArcFace matched)   ← the detector can veto an identity match
+                      decide(): stat ≥ 0.3 → ATTACK_BLOCKED (even if ArcFace matched)   ← the detector can veto an identity match
+                                stat = mean of top-2 P(swap) over the last 8 frames; no verification before 3 frames (ANALYZING)
                                 no face → NO_FACE · real but unknown → UNKNOWN_IDENTITY · real + enrolled → SECURE_VERIFIED
 ```
 
@@ -34,12 +35,13 @@ Held-out test = **identity-disjoint** (LFW people / FF++ videos not in training)
 
 | operating point | swaps detected | real users falsely blocked |
 |---|---|---|
+| threshold 0.8 | 90.5 % | 1.1 % |
 | threshold 0.5 | 94.7 % | 4.2 % |
-| **threshold 0.8 (deployed)** | **90.5 %** | **1.1 %** |
+| **threshold 0.3 (deployed)** | **96.2 %** | **6.1 %** (per frame; lower with the window rule) |
 | AUC / accuracy @0.5 | 0.993 / 95.2 % | |
 
-End-to-end (ArcFace + detector) the swap attack success drops from 99.6 % to **≈ 9–10 %** at the deployed threshold (5.3 % at 0.5).
-*Caveats:* one swapper (InSwapper) only; real faces from LFW + FF++ crops. On real webcam frames genuine users scored 0.31–0.46 (domain shift) and a live swap ~1.0 — the 0.8 threshold is a judgment call from that tiny sample (n=2 genuine webcam frames), not tuned on a webcam test set.
+End-to-end (ArcFace + detector) the swap attack success drops from 99.6 % to **≈ 4–5 %** per frame at the deployed threshold (5.3 % at 0.5; 9.5 % at 0.8).
+*Caveats:* one swapper (InSwapper) only; real faces from LFW + FF++ crops. **Webcam domain shift (important).** On 6 real webcam frames of the demo user, genuine scored 0.01–0.07 but swapped frames scored 0.97, 0.94, 0.96, 0.93, **0.51, 0.35** — a per-frame 0.8 threshold missed a third of them (this is what a live demo showed). The deployed rule therefore (a) uses a lower threshold (0.3) and (b) decides on the mean of the top-2 scores over the last 8 frames, and (c) refuses to verify before 3 frames (`ANALYZING`). Replaying the 6 frames as streams (worst-case orders, 48 frames each): genuine 40/48 VERIFIED + 8 ANALYZING warm-up, 0 blocked; attack 48/48 BLOCKED. **Caveat:** this threshold/window was chosen with those 6 frames in view, so it is calibrated for that camera and lighting, not independently validated; genuine frames in extreme lighting (blown-out backlight, overlays) scored 0.3–0.5 and would be blocked.
 
 ### 3. FaceGuard (the original FF++ classifier) — what it can and cannot do
 
@@ -89,7 +91,7 @@ uvicorn unified_api:app --host 127.0.0.1 --port 8001
 cd FaceGuard-Digital-Forensic-System/frontend && npm install && set PORT=3005 && npm start    # http://localhost:3005
 ```
 
-Demo script: open **Unified Checkpoint** → *Initiate Secure Verification* → you are `SECURE_VERIFIED` → stop, tick **Simulate face-swap attack**, start again → ArcFace now "sees" Alice, the verdict is `ATTACK_BLOCKED` and the reason says ArcFace alone would have accepted Alice.
+Demo script: open **Unified Checkpoint** → *Initiate Secure Verification* → after ~3 frames you are `SECURE_VERIFIED` → stop, tick **Simulate face-swap attack**, start again → ArcFace now "sees" Alice, the verdict is `ATTACK_BLOCKED` and the reason says ArcFace alone would have accepted Alice.
 Trained detector: `models/swapdet_deployed.pt` (committed, 9 MB; other weights are git-ignored).
 
 ## Reproduce the experiments

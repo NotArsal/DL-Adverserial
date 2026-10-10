@@ -10,6 +10,7 @@ const STATES = {
   ATTACK_BLOCKED:  { tone: 'bad',  label: 'BLOCKED',  title: 'Face-swap attack blocked', Icon: ShieldAlert },
   UNKNOWN_IDENTITY:{ tone: 'warn', label: 'UNKNOWN',  title: 'Real face, not enrolled',  Icon: AlertTriangle },
   NO_FACE:         { tone: 'idle', label: 'NO FACE',  title: 'No face in frame',         Icon: ScanFace },
+  ANALYZING:       { tone: 'idle', label: 'ANALYZING', title: 'Collecting evidence...',  Icon: Shield },
 };
 const WAITING = { tone: 'idle', label: 'WAITING', title: 'Waiting for first inference...', Icon: Shield };
 

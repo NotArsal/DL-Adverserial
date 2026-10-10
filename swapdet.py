@@ -30,13 +30,16 @@ class SwapDetector:
         return float(torch.sigmoid(self.net(x))[0])
 
 
-def decide(p_swap, id_ok, identity, threshold=0.5):
-    """Final verdict. The swap detector can veto an identity match (ArcFace alone accepts a good swap)."""
+def decide(p_swap, id_ok, identity, threshold=0.5, n_frames=None, min_frames=3):
+    """Final verdict. The swap detector can veto an identity match (ArcFace alone accepts a good swap), and a positive
+    verification needs at least `min_frames` of evidence (blocking is immediate)."""
     if p_swap is None:
         return "NO_FACE", "No face found in frame."
     if p_swap >= threshold:
         extra = f" ArcFace alone would have accepted '{identity}'." if id_ok else ""
         return "ATTACK_BLOCKED", f"Synthetic face detected (P(swap)={p_swap:.2f}).{extra}"
+    if n_frames is not None and n_frames < min_frames:
+        return "ANALYZING", f"Collecting evidence ({n_frames}/{min_frames} frames) before any verification."
     if not id_ok:
         return "UNKNOWN_IDENTITY", "Face looks real but matches no enrolled identity."
     return "SECURE_VERIFIED", f"Face looks real (P(swap)={p_swap:.2f}) and matches '{identity}'."

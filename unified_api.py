@@ -29,6 +29,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 import asyncio
+from collections import deque
 import base64
 import numpy as np
 import cv2
@@ -41,10 +42,13 @@ import src.api.server as dl_server
 sys.path.insert(0, ROOT_DIR)
 from swapdet import SwapDetector, decide
 MAX_FRAME_BYTES = 2 * 1024 * 1024
-# P(swap) at/above this blocks the attempt, even if ArcFace matches an identity. 0.8 (not 0.5) leaves margin for webcam domain shift:
-# real webcam frames score 0.3-0.5, a live InSwapper frame ~1.0. Held-out test: ~90% of swaps caught at ~1% false alarms (eval_results/system_results.json).
-SWAP_THRESHOLD = 0.8
-EMA_ALPHA = 0.5        # temporal smoothing of P(swap) across frames
+# Decision statistic = mean of the top-2 raw P(swap) over the last WINDOW frames; at/above SWAP_THRESHOLD blocks, even if ArcFace matched.
+# Why a window: single webcam frames are noisy. On 6 real frames of the demo user a swap scored 0.97,0.94,0.96,0.93,0.51,0.35 while genuine
+# frames scored 0.01-0.07, so a per-frame 0.8 (and then 0.5) threshold let swaps through in unlucky poses.
+# Why 0.3: held-out test (n=263+263) at 0.3 = 96.2% swaps caught / 6.1% per-frame false alarms (94.7% / 4.2% at 0.5); on the demo user's
+# frames genuine <= 0.12 and swapped >= 0.35. Chosen with the demo user's frames in view (n=6) -> treat as calibrated for this camera, not proven.
+SWAP_THRESHOLD = 0.3
+WINDOW = 8
 swap_detector = None
 
 @asynccontextmanager
@@ -98,7 +102,7 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
         return
 
     frame_id = 0
-    ema_p = None
+    window = deque(maxlen=WINDOW)
     try:
         while True:
             # Receive binary JPEG bytes (Optimization from previous step)
@@ -121,17 +125,17 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
             
             # --- 2. Swap detector on the face crop of the frame the verifier actually sees ---
             if bbox is None:
-                ema_p = None  # no face: reset temporal state
+                window.clear()  # no face: reset temporal state
                 p_swap = None
             else:
-                p_raw = await asyncio.to_thread(swap_detector.p_swap, scored_bgr, bbox)
-                ema_p = p_raw if ema_p is None else EMA_ALPHA * p_raw + (1 - EMA_ALPHA) * ema_p
-                p_swap = ema_p
+                window.append(await asyncio.to_thread(swap_detector.p_swap, scored_bgr, bbox))
+                top = sorted(window)[-2:]
+                p_swap = sum(top) / len(top)
             
             # --- 3. Decision: the detector can veto an identity match ---
             identity = dl_result.get("matched_identity")
             id_ok = bool(dl_result.get("model_a_accept"))
-            verdict, reason = decide(p_swap, id_ok, identity, SWAP_THRESHOLD)
+            verdict, reason = decide(p_swap, id_ok, identity, SWAP_THRESHOLD, n_frames=len(window))
             
             processed_b64 = None
             if condition == "impersonation":  # show the user the frame the verifier actually sees (the swapped face)
