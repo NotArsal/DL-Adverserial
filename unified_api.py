@@ -29,6 +29,7 @@ import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from contextlib import asynccontextmanager
 import asyncio
+import base64
 import numpy as np
 import cv2
 
@@ -132,8 +133,14 @@ async def unified_verify_ws(websocket: WebSocket, condition: str = "genuine"):
             id_ok = bool(dl_result.get("model_a_accept"))
             verdict, reason = decide(p_swap, id_ok, identity, SWAP_THRESHOLD)
             
+            processed_b64 = None
+            if condition == "impersonation":  # show the user the frame the verifier actually sees (the swapped face)
+                ok_enc, enc = cv2.imencode(".jpg", scored_bgr, [cv2.IMWRITE_JPEG_QUALITY, 70])
+                if ok_enc: processed_b64 = base64.b64encode(enc.tobytes()).decode()
+            
             response = {
                 "frame_id": frame_id,
+                "processed_frame": processed_b64,
                 "condition": condition,
                 "swap_probability": p_swap,
                 "identity": identity if id_ok else None,

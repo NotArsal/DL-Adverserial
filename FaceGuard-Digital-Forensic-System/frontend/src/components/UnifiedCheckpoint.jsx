@@ -6,6 +6,7 @@ export default function UnifiedCheckpoint() {
   const [status, setStatus] = useState("Disconnected");
   const [verdict, setVerdict] = useState(null);
   const [info, setInfo] = useState(null);
+  const [swapImg, setSwapImg] = useState(null); // frame the verifier sees (swapped) when the attack is simulated
   const [attack, setAttack] = useState(false); // simulate a live InSwapper impersonation attack
   
   const videoRef = useRef(null);
@@ -38,25 +39,26 @@ export default function UnifiedCheckpoint() {
     setStatus("Disconnected");
     setVerdict(null);
     setInfo(null);
+    setSwapImg(null);
   };
 
   const connectWS = (simulateAttack) => {
     const ws = new WebSocket(`ws://localhost:8001/ws/unified-verify?condition=${simulateAttack ? 'impersonation' : 'genuine'}`);
     ws.binaryType = "arraybuffer";
     
-    ws.onopen = () => setStatus("Connected to Unified Secure Core");
-    ws.onclose = () => { setVerdict(null); setInfo(null); setStatus("Disconnected"); };
+    ws.onopen = () => { setStatus("Connected to Unified Secure Core"); captureLoop(); };  // start only once the socket is OPEN
+    ws.onclose = () => { setVerdict(null); setInfo(null); setSwapImg(null); setStatus("Disconnected"); };
     ws.onerror = () => setStatus("Connection error - is the backend running on :8001?");
     
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      if (data.error) { setStatus(data.error); setVerdict(null); setInfo(null); return; }  // never leave a stale VERIFIED on screen
+      if (data.error) { setStatus(data.error); setVerdict(null); setInfo(null); setSwapImg(null); return; }  // never leave a stale VERIFIED on screen
       setInfo(data);
+      setSwapImg(data.processed_frame ? `data:image/jpeg;base64,${data.processed_frame}` : null);
       setVerdict(data.overall_verdict); // "ATTACK_BLOCKED", "SECURE_VERIFIED", "UNKNOWN_IDENTITY", "NO_FACE"
     };
 
     wsRef.current = ws;
-    captureLoop();
   };
 
   const captureLoop = () => {
@@ -105,6 +107,12 @@ export default function UnifiedCheckpoint() {
         <div style={{ border: '2px solid rgba(0,229,255,0.2)', padding: '1rem', background: 'rgba(0,0,0,0.5)' }}>
           <video ref={videoRef} width="640" height="480" autoPlay playsInline muted style={{ width: '100%', maxWidth: '640px' }} />
           <canvas ref={canvasRef} width="640" height="480" style={{ display: 'none' }} />
+          {swapImg && (
+            <div style={{ marginTop: '1rem' }}>
+              <div style={{ color: '#ff2d6b', fontSize: '0.8rem', marginBottom: '0.3rem' }}>WHAT THE VERIFIER SEES (face swapped to the enrolled victim)</div>
+              <img src={swapImg} alt="Swapped frame seen by the verifier" style={{ width: '100%', maxWidth: '640px', border: '1px solid #ff2d6b' }} />
+            </div>
+          )}
           
           <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between' }}>
             <label style={{ alignSelf: 'center', opacity: active ? 0.5 : 1 }}>
